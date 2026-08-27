@@ -1,0 +1,2002 @@
+     1→# 👥 Budget King BD — Group Shopping System
+     2→
+     3→The group-shopping system can become one of **Budget King BD's main differentiating features**. I would design it around this flow:
+     4→
+     5→```text
+     6→Create Group
+     7→     ↓
+     8→Share Group Code
+     9→     ↓
+    10→Members Join
+    11→     ↓
+    12→Share Products
+    13→     ↓
+    14→Vote / Discuss
+    15→     ↓
+    16→Add Products to Group Cart
+    17→     ↓
+    18→Group Checkout
+    19→     ↓
+    20→One Common Delivery
+    21→     ↓
+    22→Delivery Cost Shared
+    23→```
+    24→
+    25→Think of it like a **shared shopping room**: everyone can suggest shirts, everyone can vote, but only authorized people can finalize the group's purchase.
+    26→
+    27→---
+    28→
+    29→# 1. 👥 Group creation
+    30→
+    31→A logged-in customer can create a group.
+    32→
+    33→### Create Group
+    34→
+    35→```text
+    36→Group name:
+    37→DIU Friends
+    38→
+    39→Group description:
+    40→Buying shirts together
+    41→
+    42→Delivery area:
+    43→Dhaka
+    44→
+    45→[ Create Group ]
+    46→```
+    47→
+    48→After creation:
+    49→
+    50→```text
+    51→DIU Friends
+    52→
+    53→Group Code:
+    54→BK7X29
+    55→
+    56→[ Copy Code ]
+    57→[ Share Group ]
+    58→```
+    59→
+    60→I'd use a **short random code**, not the group's database ID.
+    61→
+    62→Example:
+    63→
+    64→```text
+    65→BK7X29
+    66→```
+    67→
+    68→---
+    69→
+    70→# 2. Joining a group
+    71→
+    72→Customer enters:
+    73→
+    74→```text
+    75→Join a Group
+    76→
+    77→Group Code:
+    78→[ BK7X29 ]
+    79→
+    80→[ Join ]
+    81→```
+    82→
+    83→Server checks:
+    84→
+    85→* Does the group exist?
+    86→* Is it active?
+    87→* Is joining allowed?
+    88→* Is the user already a member?
+    89→* Has the group reached its member limit?
+    90→
+    91→Then:
+    92→
+    93→```text
+    94→Rahim joined DIU Friends
+    95→```
+    96→
+    97→---
+    98→
+    99→# 3. 👤 Group roles
+   100→
+   101→Keep group-specific roles simple.
+   102→
+   103→### Group Owner
+   104→
+   105→The person who created the group.
+   106→
+   107→Can:
+   108→
+   109→* Change group settings
+   110→* Remove members
+   111→* Change member permissions
+   112→* Manage group cart
+   113→* Start group checkout
+   114→* Set delivery address
+   115→* Close/delete group
+   116→
+   117→### Group Member
+   118→
+   119→Can:
+   120→
+   121→* View group
+   122→* Share products
+   123→* Vote
+   124→* Comment/discuss
+   125→* Add products to group cart
+   126→* See group cart
+   127→* Remove **their own** items
+   128→
+   129→### Optional: Group Admin
+   130→
+   131→I'd initially **avoid this**.
+   132→
+   133→If a group becomes large, you can allow the owner to promote someone to:
+   134→
+   135→> Group Admin
+   136→
+   137→But this isn't necessary for V1.
+   138→
+   139→---
+   140→
+   141→# 4. 🔐 Group permissions
+   142→
+   143→I'd use something like:
+   144→
+   145→| Action                       | Owner | Member |
+   146→| ---------------------------- | ----: | -----: |
+   147→| View group                   |     ✅ |      ✅ |
+   148→| Join                         |     — |      — |
+   149→| Invite                       |     ✅ |      ✅ |
+   150→| Share product                |     ✅ |      ✅ |
+   151→| Vote                         |     ✅ |      ✅ |
+   152→| Comment                      |     ✅ |      ✅ |
+   153→| Add to group cart            |     ✅ |      ✅ |
+   154→| Remove own cart item         |     ✅ |      ✅ |
+   155→| Remove another member's item |     ✅ |      ❌ |
+   156→| Edit group settings          |     ✅ |      ❌ |
+   157→| Remove member                |     ✅ |      ❌ |
+   158→| Start checkout               |     ✅ |      ❌ |
+   159→| Set common address           |     ✅ |      ❌ |
+   160→| Close group                  |     ✅ |      ❌ |
+   161→
+   162→The key principle:
+   163→
+   164→> **Members control their own shopping; the owner controls the group.**
+   165→
+   166→---
+   167→
+   168→# 5. 🛍️ Product sharing
+   169→
+   170→This is where the group becomes more than just a shared cart.
+   171→
+   172→Customer sees a product:
+   173→
+   174→```text
+   175→Oxford Shirt
+   176→৳699
+   177→
+   178→[ Add to Cart ]
+   179→[ Share to Group ]
+   180→```
+   181→
+   182→Click:
+   183→
+   184→> Share to Group
+   185→
+   186→Then:
+   187→
+   188→```text
+   189→Share with:
+   190→
+   191→☑ DIU Friends
+   192→☐ CSE Friends
+   193→
+   194→Message:
+   195→"Should we buy this one?"
+   196→
+   197→[ Share ]
+   198→```
+   199→
+   200→---
+   201→
+   202→# 6. Group feed
+   203→
+   204→The group should have a feed.
+   205→
+   206→Example:
+   207→
+   208→```text
+   209→DIU Friends
+   210→5 Members
+   211→────────────────────
+   212→
+   213→Rahim shared:
+   214→
+   215→      [ Shirt Image ]
+   216→
+   217→Oxford Shirt
+   218→Black / XL
+   219→৳699
+   220→
+   221→"Should we get this?"
+   222→
+   223→👍 4     👎 1
+   224→
+   225→[ View Product ]
+   226→[ Add to Group Cart ]
+   227→────────────────────
+   228→
+   229→Karim shared:
+   230→
+   231→      [ Shirt Image ]
+   232→
+   233→Premium Polo
+   234→৳799
+   235→
+   236→👍 2     👎 3
+   237→```
+   238→
+   239→This creates a lightweight social-shopping experience.
+   240→
+   241→---
+   242→
+   243→# 7. 👍 Voting
+   244→
+   245→Keep voting extremely simple.
+   246→
+   247→### Option 1
+   248→
+   249→```text
+   250→👍 Like
+   251→👎 Dislike
+   252→```
+   253→
+   254→This is enough for V1.
+   255→
+   256→### Better later
+   257→
+   258→You could have:
+   259→
+   260→```text
+   261→👍 Want it
+   262→🤔 Maybe
+   263→👎 Don't want it
+   264→```
+   265→
+   266→But I wouldn't overcomplicate the initial system.
+   267→
+   268→---
+   269→
+   270→# 8. One vote per member
+   271→
+   272→A member should only have **one active vote per shared product**.
+   273→
+   274→Example:
+   275→
+   276→```text
+   277→Rahim → 👍
+   278→Karim → 👍
+   279→Hasan → 👎
+   280→```
+   281→
+   282→Results:
+   283→
+   284→```text
+   285→👍 2
+   286→👎 1
+   287→```
+   288→
+   289→If Rahim changes his mind:
+   290→
+   291→```text
+   292→👍 → 👎
+   293→```
+   294→
+   295→The system updates his vote rather than creating another vote.
+   296→
+   297→---
+   298→
+   299→# 9. Voting doesn't automatically add to cart
+   300→
+   301→This distinction is important.
+   302→
+   303→Someone votes:
+   304→
+   305→> 👍
+   306→
+   307→That should **not mean they want to buy it**.
+   308→
+   309→Instead:
+   310→
+   311→```text
+   312→Vote
+   313→  ≠
+   314→Purchase
+   315→```
+   316→
+   317→The user must explicitly select:
+   318→
+   319→> **Add to Group Cart**
+   320→
+   321→This prevents accidental orders.
+   322→
+   323→---
+   324→
+   325→# 10. Product sharing permissions
+   326→
+   327→Members can share:
+   328→
+   329→* Existing Budget King products
+   330→* Specific variant
+   331→* Size
+   332→* Color
+   333→
+   334→For example:
+   335→
+   336→```text
+   337→Oxford Shirt
+   338→Black / XL
+   339→৳699
+   340→```
+   341→
+   342→Not simply:
+   343→
+   344→```text
+   345→Oxford Shirt
+   346→```
+   347→
+   348→because size/color matters for inventory.
+   349→
+   350→---
+   351→
+   352→# 11. 👕 Variant selection
+   353→
+   354→If someone shares a product without selecting a variant:
+   355→
+   356→```text
+   357→Oxford Shirt
+   358→
+   359→Color:
+   360→[ Select ]
+   361→
+   362→Size:
+   363→[ Select ]
+   364→
+   365→[ Share ]
+   366→```
+   367→
+   368→But if they're just asking the group whether the product looks good, they can share the base product.
+   369→
+   370→Then:
+   371→
+   372→> Add to group cart
+   373→
+   374→requires variant selection.
+   375→
+   376→---
+   377→
+   378→# 12. 💬 Discussion
+   379→
+   380→I'd include lightweight comments.
+   381→
+   382→Example:
+   383→
+   384→```text
+   385→Rahim:
+   386→"Black looks better."
+   387→
+   388→Karim:
+   389→"I prefer navy."
+   390→
+   391→Hasan:
+   392→"Let's get black."
+   393→
+   394→👍 4
+   395→```
+   396→
+   397→Don't turn it into a full messaging platform.
+   398→
+   399→You don't need:
+   400→
+   401→* Private messaging
+   402→* Voice
+   403→* Video
+   404→* Complex chat
+   405→
+   406→Just product-specific comments.
+   407→
+   408→---
+   409→
+   410→# 13. 🛒 Group cart
+   411→
+   412→This should be clearly different from the customer's normal cart.
+   413→
+   414→Example:
+   415→
+   416→```text
+   417→GROUP CART
+   418→DIU Friends
+   419→
+   420→────────────────────
+   421→
+   422→Rahim
+   423→Oxford Shirt
+   424→Black / XL × 2
+   425→৳1,398
+   426→
+   427→Karim
+   428→Oxford Shirt
+   429→White / L × 1
+   430→৳699
+   431→
+   432→Hasan
+   433→Polo
+   434→Navy / M × 1
+   435→৳799
+   436→
+   437→────────────────────
+   438→Subtotal       ৳2,896
+   439→Delivery          ৳80
+   440→────────────────────
+   441→Total          ৳2,976
+   442→```
+   443→
+   444→---
+   445→
+   446→# 14. Individual ownership of items
+   447→
+   448→Every group-cart item should belong to a specific member.
+   449→
+   450→Example:
+   451→
+   452→```text
+   453→group_cart_item
+   454→
+   455→member:
+   456→Rahim
+   457→
+   458→product:
+   459→Oxford Shirt
+   460→
+   461→variant:
+   462→Black / XL
+   463→
+   464→quantity:
+   465→2
+   466→```
+   467→
+   468→This is important for:
+   469→
+   470→* Who added it
+   471→* Who owns it
+   472→* How much they owe
+   473→* Removing their items
+   474→* Tracking their purchases
+   475→
+   476→---
+   477→
+   478→# 15. Members should see their own total
+   479→
+   480→At the bottom:
+   481→
+   482→```text
+   483→Your items
+   484→
+   485→Oxford Shirt ×2
+   486→৳1,398
+   487→
+   488→Your product total:
+   489→৳1,398
+   490→```
+   491→
+   492→And:
+   493→
+   494→```text
+   495→Group total:
+   496→৳2,976
+   497→```
+   498→
+   499→This makes COD collection easier.
+   500→
+   501→---
+   502→
+   503→# 16. 🧮 Delivery splitting
+   504→
+   505→This is where your idea becomes useful.
+   506→
+   507→Suppose:
+   508→
+   509→```text
+   510→Rahim     ৳1,398
+   511→Karim       ৳699
+   512→Hasan       ৳799
+   513→----------------
+   514→Products  ৳2,896
+   515→```
+   516→
+   517→Normal individual delivery:
+   518→
+   519→```text
+   520→Rahim → ৳80
+   521→Karim → ৳80
+   522→Hasan → ৳80
+   523→
+   524→Total delivery = ৳240
+   525→```
+   526→
+   527→Group:
+   528→
+   529→```text
+   530→One destination
+   531→       ↓
+   532→One delivery
+   533→       ↓
+   534→৳80
+   535→```
+   536→
+   537→Savings:
+   538→
+   539→```text
+   540→৳240 → ৳80
+   541→```
+   542→
+   543→---
+   544→
+   545→# 17. How should delivery be split?
+   546→
+   547→I recommend **proportional splitting based on item subtotal**.
+   548→
+   549→Example:
+   550→
+   551→```text
+   552→Total product value = ৳2,896
+   553→Delivery = ৳80
+   554→```
+   555→
+   556→Rahim:
+   557→
+   558→```text
+   559→1398 / 2896 × 80
+   560→≈ ৳38.64
+   561→```
+   562→
+   563→Karim:
+   564→
+   565→```text
+   566→699 / 2896 × 80
+   567→≈ ৳19.31
+   568→```
+   569→
+   570→Hasan:
+   571→
+   572→```text
+   573→799 / 2896 × 80
+   574→≈ ৳22.05
+   575→```
+   576→
+   577→Total:
+   578→
+   579→```text
+   580→38.64 + 19.31 + 22.05
+   581→= ৳80
+   582→```
+   583→
+   584→This is fairer than simply splitting:
+   585→
+   586→```text
+   587→৳80 / 3 = ৳26.67
+   588→```
+   589→
+   590→because members may buy very different amounts.
+   591→
+   592→---
+   593→
+   594→# 18. But for COD...
+   595→
+   596→Here's the important operational problem.
+   597→
+   598→Suppose:
+   599→
+   600→```text
+   601→Rahim → ৳1,436.64
+   602→Karim → ৳718.31
+   603→Hasan → ৳821.05
+   604→```
+   605→
+   606→Are you going to ask the delivery agent to collect three separate payments?
+   607→
+   608→**I wouldn't.**
+   609→
+   610→For V1:
+   611→
+   612→### One group order = one COD payment
+   613→
+   614→The group owner chooses:
+   615→
+   616→> **COD payer**
+   617→
+   618→Example:
+   619→
+   620→```text
+   621→COD Payer:
+   622→Rahim
+   623→
+   624→Total:
+   625→৳2,976
+   626→```
+   627→
+   628→Rahim collects money from the others himself.
+   629→
+   630→The system can still show:
+   631→
+   632→```text
+   633→Rahim owes:    ৳1,436.64
+   634→Karim owes:      ৳718.31
+   635→Hasan owes:      ৳821.05
+   636→```
+   637→
+   638→But Budget King BD only needs to collect:
+   639→
+   640→```text
+   641→৳2,976
+   642→```
+   643→
+   644→from the delivery recipient.
+   645→
+   646→---
+   647→
+   648→# 19. Alternative: equal delivery split
+   649→
+   650→For simplicity, you could allow:
+   651→
+   652→```text
+   653→Delivery splitting:
+   654→
+   655→○ Proportional
+   656→○ Equal
+   657→```
+   658→
+   659→But I would make **proportional the default**.
+   660→
+   661→---
+   662→
+   663→# 20. 🚚 Common delivery address
+   664→
+   665→Group checkout must explicitly establish:
+   666→
+   667→> Where is this combined order being delivered?
+   668→
+   669→Example:
+   670→
+   671→```text
+   672→Group Delivery
+   673→
+   674→Address:
+   675→DIU Main Campus
+   676→Dhanmondi, Dhaka
+   677→
+   678→[ Confirm Address ]
+   679→```
+   680→
+   681→All members need to understand:
+   682→
+   683→> **This is one shared delivery.**
+   684→
+   685→---
+   686→
+   687→# 21. Group checkout
+   688→
+   689→Only the **Group Owner** should initiate final checkout.
+   690→
+   691→Flow:
+   692→
+   693→```text
+   694→Group Cart
+   695→    ↓
+   696→Review members/items
+   697→    ↓
+   698→Check inventory
+   699→    ↓
+   700→Confirm common address
+   701→    ↓
+   702→Calculate delivery
+   703→    ↓
+   704→Select COD payer
+   705→    ↓
+   706→Review total
+   707→    ↓
+   708→Place Group Order
+   709→```
+   710→
+   711→---
+   712→
+   713→# 22. Final confirmation
+   714→
+   715→Before placing:
+   716→
+   717→```text
+   718→⚠️ Group Order Confirmation
+   719→
+   720→Members: 5
+   721→Items: 8
+   722→
+   723→Delivery:
+   724→DIU Main Campus
+   725→
+   726→Payment:
+   727→Cash on Delivery
+   728→
+   729→COD Payer:
+   730→Rahim
+   731→
+   732→Subtotal:
+   733→৳4,280
+   734→
+   735→Delivery:
+   736→৳80
+   737→
+   738→Total:
+   739→৳4,360
+   740→
+   741→[ Place Group Order ]
+   742→```
+   743→
+   744→This is the final point where inventory should be reserved.
+   745→
+   746→---
+   747→
+   748→# 23. Inventory reservation
+   749→
+   750→Don't reserve inventory when someone adds something to the group cart.
+   751→
+   752→Example:
+   753→
+   754→```text
+   755→Group cart:
+   756→Black XL × 5
+   757→```
+   758→
+   759→No reservation yet.
+   760→
+   761→Only:
+   762→
+   763→```text
+   764→Place Group Order
+   765→        ↓
+   766→Check inventory
+   767→        ↓
+   768→Reserve
+   769→```
+   770→
+   771→This follows the same inventory architecture we already planned.
+   772→
+   773→---
+   774→
+   775→# 24. What if stock disappears?
+   776→
+   777→Suppose:
+   778→
+   779→```text
+   780→Group cart:
+   781→Black XL × 3
+   782→```
+   783→
+   784→But another customer purchases the last two.
+   785→
+   786→At checkout:
+   787→
+   788→```text
+   789→Available:
+   790→2
+   791→
+   792→Requested:
+   793→3
+   794→```
+   795→
+   796→Show:
+   797→
+   798→```text
+   799→⚠️ Stock changed
+   800→
+   801→Black / XL
+   802→
+   803→Requested: 3
+   804→Available: 2
+   805→
+   806→Please update the group cart.
+   807→```
+   808→
+   809→Don't silently reduce the quantity.
+   810→
+   811→---
+   812→
+   813→# 25. Member leaving the group
+   814→
+   815→If a member leaves:
+   816→
+   817→```text
+   818→Leave Group
+   819→```
+   820→
+   821→their **unsubmitted group-cart items should be removed**.
+   822→
+   823→But previous completed orders remain unaffected.
+   824→
+   825→Example:
+   826→
+   827→```text
+   828→Group membership
+   829→     ↓
+   830→Leave
+   831→     ↓
+   832→Remove active cart items
+   833→     ↓
+   834→Preserve order history
+   835→```
+   836→
+   837→---
+   838→
+   839→# 26. Owner leaving
+   840→
+   841→Don't allow:
+   842→
+   843→> Owner leaves → group has no owner.
+   844→
+   845→Instead:
+   846→
+   847→```text
+   848→Owner
+   849→ ↓
+   850→Transfer ownership
+   851→ ↓
+   852→New owner
+   853→ ↓
+   854→Old owner becomes member
+   855→```
+   856→
+   857→Or:
+   858→
+   859→```text
+   860→Owner
+   861→ ↓
+   862→Close Group
+   863→```
+   864→
+   865→---
+   866→
+   867→# 27. Group limits
+   868→
+   869→I'd impose reasonable limits from the beginning.
+   870→
+   871→For example:
+   872→
+   873→```text
+   874→Maximum members: 50
+   875→```
+   876→
+   877→And perhaps:
+   878→
+   879→```text
+   880→Maximum shared products: 100
+   881→```
+   882→
+   883→These don't need to be permanent; they can be configurable later.
+   884→
+   885→This also helps abuse prevention.
+   886→
+   887→---
+   888→
+   889→# 28. Group expiration
+   890→
+   891→You should consider inactive groups.
+   892→
+   893→For example:
+   894→
+   895→```text
+   896→Group created
+   897→      ↓
+   898→No activity for 90 days
+   899→      ↓
+   900→Inactive
+   901→```
+   902→
+   903→But **don't delete the historical orders**.
+   904→
+   905→You can archive the group.
+   906→
+   907→---
+   908→
+   909→# 29. Group UI
+   910→
+   911→I'd structure the group page like:
+   912→
+   913→```text
+   914→┌───────────────────────────────────┐
+   915→│ DIU Friends                 ⚙️    │
+   916→│ 8 Members                         │
+   917→│ Code: BK7X29                     │
+   918→├───────────────────────────────────┤
+   919→│                                   │
+   920→│ [ Feed ] [ Cart ] [ Members ]     │
+   921→│                                   │
+   922→├───────────────────────────────────┤
+   923→│                                   │
+   924→│ Rahim shared a product            │
+   925→│                                   │
+   926→│     [ Product Image ]             │
+   927→│     Oxford Shirt                  │
+   928→│     ৳699                          │
+   929→│                                   │
+   930→│     👍 6     👎 2                 │
+   931→│                                   │
+   932→│ [View] [Add to Group Cart]        │
+   933→│                                   │
+   934→└───────────────────────────────────┘
+   935→```
+   936→
+   937→I'd use **three tabs**:
+   938→
+   939→### Feed
+   940→
+   941→Products + votes + comments
+   942→
+   943→### Cart
+   944→
+   945→Combined shopping cart
+   946→
+   947→### Members
+   948→
+   949→Group members and permissions
+   950→
+   951→---
+   952→
+   953→# 30. Group home dashboard
+   954→
+   955→At the top:
+   956→
+   957→```text
+   958→DIU Friends
+   959→
+   960→👥 8 Members
+   961→🛒 7 Items
+   962→💰 ৳4,280
+   963→
+   964→Delivery:
+   965→DIU Campus
+   966→
+   967→[ Share Group ]
+   968→[ View Cart ]
+   969→```
+   970→
+   971→This gives everyone an immediate overview.
+   972→
+   973→---
+   974→
+   975→# 31. Group notifications
+   976→
+   977→Useful notifications:
+   978→
+   979→```text
+   980→Rahim joined the group.
+   981→
+   982→Karim shared a product.
+   983→
+   984→Hasan voted 👍 on Oxford Shirt.
+   985→
+   986→Rahim added Oxford Shirt to group cart.
+   987→
+   988→Group cart was updated.
+   989→
+   990→Group order is ready for checkout.
+   991→```
+   992→
+   993→But avoid excessive notifications.
+   994→
+   995→---
+   996→
+   997→# 32. Security
+   998→
+   999→Group codes should **not be treated as authorization credentials**.
+  1000→
+  1001→A code such as:
+  1002→
+  1003→```text
+  1004→BK7X29
+  1005→```
+  1006→
+  1007→only allows someone to **request joining**.
+  1008→
+  1009→The server must still verify:
+  1010→
+  1011→```text
+  1012→Authenticated Google account
+  1013→        ↓
+  1014→Membership
+  1015→        ↓
+  1016→Permission
+  1017→        ↓
+  1018→Action
+  1019→```
+  1020→
+  1021→Never do:
+  1022→
+  1023→```text
+  1024→if group_code == "BK7X29":
+  1025→    allow_admin_action()
+  1026→```
+  1027→
+  1028→---
+  1029→
+  1030→# 33. Important RLS boundaries
+  1031→
+  1032→Supabase RLS should enforce:
+  1033→
+  1034→### Member can read
+  1035→
+  1036→Only groups they're members of.
+  1037→
+  1038→```text
+  1039→group_members.user_id = auth.uid()
+  1040→```
+  1041→
+  1042→### Member can create
+  1043→
+  1044→Shared products/votes/comments for groups they're members of.
+  1045→
+  1046→### Member can modify
+  1047→
+  1048→Only their own:
+  1049→
+  1050→* Vote
+  1051→* Cart items
+  1052→* Comments
+  1053→
+  1054→### Owner can modify
+  1055→
+  1056→Group-level settings and members.
+  1057→
+  1058→### Admin
+  1059→
+  1060→Can access everything according to your admin policies.
+  1061→
+  1062→---
+  1063→
+  1064→# 34. Recommended tables
+  1065→
+  1066→At the database-design level, this feature will probably need:
+  1067→
+  1068→```text
+  1069→groups
+  1070→group_members
+  1071→group_invites
+  1072→group_products
+  1073→group_votes
+  1074→group_comments
+  1075→group_cart_items
+  1076→group_orders
+  1077→```
+  1078→
+  1079→Potentially:
+  1080→
+  1081→```text
+  1082→group_settings
+  1083→```
+  1084→
+  1085→if you later make group behavior configurable.
+  1086→
+  1087→---
+  1088→
+  1089→# 35. Relationship
+  1090→
+  1091→```text
+  1092→USER
+  1093→ │
+  1094→ ├──────────────┐
+  1095→ ↓              ↓
+  1096→GROUP       GROUP_MEMBER
+  1097→ │
+  1098→ ├── GROUP_PRODUCT
+  1099→ │       │
+  1100→ │       ├── GROUP_VOTE
+  1101→ │       └── GROUP_COMMENT
+  1102→ │
+  1103→ └── GROUP_CART_ITEM
+  1104→          │
+  1105→          ↓
+  1106→      GROUP_ORDER
+  1107→          │
+  1108→          ↓
+  1109→      ORDER_ITEMS
+  1110→```
+  1111→
+  1112→---
+  1113→
+  1114→# 36. Full group-shopping lifecycle
+  1115→
+  1116→```text
+  1117→                 CREATE GROUP
+  1118→                      │
+  1119→                      ↓
+  1120→               SHARE GROUP CODE
+  1121→                      │
+  1122→                      ↓
+  1123→                MEMBERS JOIN
+  1124→                      │
+  1125→                      ↓
+  1126→              SHARE PRODUCTS
+  1127→                      │
+  1128→                      ↓
+  1129→                  VOTE
+  1130→                      │
+  1131→                      ↓
+  1132→              DISCUSS PRODUCTS
+  1133→                      │
+  1134→                      ↓
+  1135→            ADD TO GROUP CART
+  1136→                      │
+  1137→                      ↓
+  1138→               REVIEW CART
+  1139→                      │
+  1140→                      ↓
+  1141→             COMMON ADDRESS
+  1142→                      │
+  1143→                      ↓
+  1144→              STOCK CHECK
+  1145→                      │
+  1146→                      ↓
+  1147→             RESERVE STOCK
+  1148→                      │
+  1149→                      ↓
+  1150→              GROUP ORDER
+  1151→                      │
+  1152→                      ↓
+  1153→                COD PAYMENT
+  1154→                      │
+  1155→                      ↓
+  1156→              SINGLE DELIVERY
+  1157→                      │
+  1158→                      ↓
+  1159→                 DELIVERED
+  1160→```
+  1161→
+  1162→---
+  1163→
+  1164→# 37. What I would build for V1
+  1165→
+  1166→Don't try to build a mini social network.
+  1167→
+  1168→### Definitely include
+  1169→
+  1170→* ✅ Group creation
+  1171→* ✅ Group code
+  1172→* ✅ Join group
+  1173→* ✅ Owner/member roles
+  1174→* ✅ Product sharing
+  1175→* ✅ 👍/👎 voting
+  1176→* ✅ Product comments
+  1177→* ✅ Group cart
+  1178→* ✅ Individual member ownership of cart items
+  1179→* ✅ Common delivery address
+  1180→* ✅ Group checkout
+  1181→* ✅ One COD payer
+  1182→* ✅ Combined delivery
+  1183→* ✅ Proportional delivery calculation
+  1184→* ✅ Inventory validation
+  1185→* ✅ Group order tracking
+  1186→
+  1187→### Leave for V2
+  1188→
+  1189→* ⏳ Group chat
+  1190→* ⏳ Group admins
+  1191→* ⏳ Multiple COD payers
+  1192→* ⏳ Advanced voting/polls
+  1193→* ⏳ Group-specific discounts
+  1194→* ⏳ Group spending limits
+  1195→* ⏳ Group purchase history analytics
+  1196→* ⏳ Invite links with advanced permissions
+  1197→
+  1198→**The strongest part of this feature is not the voting itself; it's the connection between social decision-making → shared cart → single destination → lower delivery cost.** That's the workflow I'd make visually prominent throughout Budget King BD.
+  1199→
+  1200→
+  1201→# 📊 Budget King BD — Inventory System
+  1202→
+  1203→For Budget King BD, I recommend a **variant-based inventory system with reservations and an immutable movement history**.
+  1204→
+  1205→The core idea:
+  1206→
+  1207→```text
+  1208→Product
+  1209→   ↓
+  1210→Variant
+  1211→   ↓
+  1212→Available Stock
+  1213→   ↓
+  1214→Reservation
+  1215→   ↓
+  1216→Order
+  1217→   ↓
+  1218→Delivered / Cancelled / Returned
+  1219→```
+  1220→
+  1221→The key rule is: **customers never directly modify stock.** Every stock change happens through controlled server-side operations.
+  1222→
+  1223→---
+  1224→
+  1225→# 1. 👕 Stock belongs to variants
+  1226→
+  1227→Inventory should be attached to the **product variant**, not the product itself.
+  1228→
+  1229→Example:
+  1230→
+  1231→```text
+  1232→Oxford Shirt
+  1233→│
+  1234→├── Black / M   → SKU: OS-BLK-M → 12
+  1235→├── Black / L   → SKU: OS-BLK-L → 8
+  1236→├── Black / XL  → SKU: OS-BLK-XL → 5
+  1237→├── White / M   → SKU: OS-WHT-M → 10
+  1238→└── White / L   → SKU: OS-WHT-L → 7
+  1239→```
+  1240→
+  1241→Each variant has its own stock.
+  1242→
+  1243→This becomes essential when you eventually sell trousers, shoes, etc.
+  1244→
+  1245→**Analogy:** A clothing store doesn't have "20 Oxford shirts" as one pile—the warehouse has 20 specific combinations of size/color.
+  1246→
+  1247→---
+  1248→
+  1249→# 2. 🗄️ Inventory table
+  1250→
+  1251→Use:
+  1252→
+  1253→```text
+  1254→inventory
+  1255→├── variant_id
+  1256→├── quantity
+  1257→├── reserved_quantity
+  1258→├── low_stock_threshold
+  1259→├── updated_at
+  1260→└── updated_by
+  1261→```
+  1262→
+  1263→For example:
+  1264→
+  1265→```text
+  1266→Variant: Black / XL
+  1267→
+  1268→quantity          = 10
+  1269→reserved_quantity = 3
+  1270→```
+  1271→
+  1272→Therefore:
+  1273→
+  1274→```text
+  1275→Available stock = 10 - 3 = 7
+  1276→```
+  1277→
+  1278→---
+  1279→
+  1280→# 3. 🟢 Stock states
+  1281→
+  1282→You essentially have:
+  1283→
+  1284→```text
+  1285→TOTAL STOCK
+  1286→     │
+  1287→     ├── AVAILABLE
+  1288→     │
+  1289→     └── RESERVED
+  1290→```
+  1291→
+  1292→Example:
+  1293→
+  1294→```text
+  1295→Total:      20
+  1296→Reserved:    4
+  1297→Available:  16
+  1298→```
+  1299→
+  1300→Don't create a separate manually editable `available_quantity`.
+  1301→
+  1302→Calculate it:
+  1303→
+  1304→```text
+  1305→available = quantity - reserved_quantity
+  1306→```
+  1307→
+  1308→That prevents inconsistencies.
+  1309→
+  1310→---
+  1311→
+  1312→# 4. 🛒 Stock reservation
+  1313→
+  1314→This is particularly important for COD.
+  1315→
+  1316→Suppose:
+  1317→
+  1318→```text
+  1319→Stock = 10
+  1320→```
+  1321→
+  1322→Customer A orders:
+  1323→
+  1324→```text
+  1325→5 shirts
+  1326→```
+  1327→
+  1328→While the order is pending:
+  1329→
+  1330→```text
+  1331→quantity          = 10
+  1332→reserved_quantity = 5
+  1333→available         = 5
+  1334→```
+  1335→
+  1336→Now Customer B can't successfully order 6.
+  1337→
+  1338→The server sees:
+  1339→
+  1340→```text
+  1341→Available = 5
+  1342→Requested = 6
+  1343→
+  1344→❌ Insufficient stock
+  1345→```
+  1346→
+  1347→---
+  1348→
+  1349→# 5. Why reservation is necessary
+  1350→
+  1351→Without reservations:
+  1352→
+  1353→```text
+  1354→Stock = 5
+  1355→
+  1356→Customer A → orders 5
+  1357→Customer B → orders 5
+  1358→```
+  1359→
+  1360→Both requests might see:
+  1361→
+  1362→```text
+  1363→Stock = 5
+  1364→```
+  1365→
+  1366→You end up with:
+  1367→
+  1368→```text
+  1369→10 orders
+  1370→5 products
+  1371→```
+  1372→
+  1373→That's an **overselling/race-condition problem**.
+  1374→
+  1375→Reservation acts like putting a product into a physical shopping basket and marking it "held."
+  1376→
+  1377→---
+  1378→
+  1379→# 6. When should stock be reserved?
+  1380→
+  1381→I'd recommend:
+  1382→
+  1383→```text
+  1384→Order successfully created
+  1385→        ↓
+  1386→Stock reservation
+  1387→```
+  1388→
+  1389→So:
+  1390→
+  1391→```text
+  1392→PENDING
+  1393→   ↓
+  1394→Reserved
+  1395→```
+  1396→
+  1397→Then the reservation remains while the order is being processed.
+  1398→
+  1399→---
+  1400→
+  1401→# 7. Reservation lifecycle
+  1402→
+  1403→```text
+  1404→Order Created
+  1405→      ↓
+  1406→Reserve Stock
+  1407→      ↓
+  1408→PENDING
+  1409→      │
+  1410→      ├── Cancelled → Release Reservation
+  1411→      │
+  1412→      ↓
+  1413→CONFIRMED
+  1414→      ↓
+  1415→PROCESSING
+  1416→      ↓
+  1417→SHIPPED
+  1418→      ↓
+  1419→DELIVERED
+  1420→      ↓
+  1421→Convert Reservation → Sold
+  1422→```
+  1423→
+  1424→The important distinction:
+  1425→
+  1426→### Reserved ≠ Sold
+  1427→
+  1428→A pending order hasn't actually resulted in a completed sale yet.
+  1429→
+  1430→---
+  1431→
+  1432→# 8. 📦 When order is shipped
+  1433→
+  1434→At shipping:
+  1435→
+  1436→```text
+  1437→Reserved
+  1438→    ↓
+  1439→Sold
+  1440→```
+  1441→
+  1442→Conceptually:
+  1443→
+  1444→```text
+  1445→quantity = quantity - sold_quantity
+  1446→reserved_quantity = reserved_quantity - reserved_quantity
+  1447→```
+  1448→
+  1449→Example:
+  1450→
+  1451→Before:
+  1452→
+  1453→```text
+  1454→Total stock: 10
+  1455→Reserved:     3
+  1456→Available:    7
+  1457→```
+  1458→
+  1459→After shipping 3:
+  1460→
+  1461→```text
+  1462→Total stock: 7
+  1463→Reserved:    0
+  1464→Available:   7
+  1465→```
+  1466→
+  1467→---
+  1468→
+  1469→# 9. ❌ Cancellation
+  1470→
+  1471→Suppose:
+  1472→
+  1473→```text
+  1474→Stock = 10
+  1475→Reserved = 3
+  1476→Available = 7
+  1477→```
+  1478→
+  1479→Customer cancels.
+  1480→
+  1481→The product was never sold.
+  1482→
+  1483→So:
+  1484→
+  1485→```text
+  1486→Reserved:
+  1487→3 → 0
+  1488→```
+  1489→
+  1490→Result:
+  1491→
+  1492→```text
+  1493→Stock = 10
+  1494→Reserved = 0
+  1495→Available = 10
+  1496→```
+  1497→
+  1498→You **release the reservation**, rather than adding stock.
+  1499→
+  1500→---
+  1501→
+  1502→# 10. 🚚 Delivery failure
+  1503→
+  1504→If the order was shipped but couldn't be delivered:
+  1505→
+  1506→```text
+  1507→SHIPPED
+  1508→   ↓
+  1509→DELIVERY_FAILED
+  1510→```
+  1511→
+  1512→You need to distinguish between:
+  1513→
+  1514→### Reattempt
+  1515→
+  1516→```text
+  1517→DELIVERY_FAILED
+  1518→      ↓
+  1519→SHIPPED
+  1520→```
+  1521→
+  1522→No inventory change.
+  1523→
+  1524→### Order permanently cancelled
+  1525→
+  1526→Then the item comes back into your inventory:
+  1527→
+  1528→```text
+  1529→Cancelled
+  1530→   ↓
+  1531→Returned to warehouse
+  1532→   ↓
+  1533→Stock + quantity
+  1534→```
+  1535→
+  1536→But this should happen when the physical goods are actually back—not merely when the order is marked cancelled.
+  1537→
+  1538→---
+  1539→
+  1540→# 11. ↩️ Returns
+  1541→
+  1542→Returns need slightly different treatment.
+  1543→
+  1544→Example:
+  1545→
+  1546→```text
+  1547→Customer bought:
+  1548→Black / XL × 1
+  1549→```
+  1550→
+  1551→Order delivered.
+  1552→
+  1553→Later returned.
+  1554→
+  1555→When the physical shirt comes back:
+  1556→
+  1557→### If sellable
+  1558→
+  1559→```text
+  1560→Inventory +1
+  1561→```
+  1562→
+  1563→### If damaged
+  1564→
+  1565→```text
+  1566→Inventory +0
+  1567→```
+  1568→
+  1569→Instead record:
+  1570→
+  1571→```text
+  1572→DAMAGED / UNSALABLE
+  1573→```
+  1574→
+  1575→This distinction matters for clothing.
+  1576→
+  1577→---
+  1578→
+  1579→# 12. 🔄 Exchange
+  1580→
+  1581→Example:
+  1582→
+  1583→Customer wants:
+  1584→
+  1585→```text
+  1586→Black / L
+  1587→```
+  1588→
+  1589→but receives/ordered:
+  1590→
+  1591→```text
+  1592→Black / XL
+  1593→```
+  1594→
+  1595→Exchange:
+  1596→
+  1597→```text
+  1598→XL returned
+  1599→L supplied
+  1600→```
+  1601→
+  1602→Inventory:
+  1603→
+  1604→```text
+  1605→XL → +1
+  1606→L  → -1
+  1607→```
+  1608→
+  1609→But only after the appropriate physical exchange steps occur.
+  1610→
+  1611→---
+  1612→
+  1613→# 13. 🧾 Inventory movement history
+  1614→
+  1615→Never simply overwrite stock without recording **why it changed**.
+  1616→
+  1617→Create:
+  1618→
+  1619→```text
+  1620→inventory_movements
+  1621→├── id
+  1622→├── variant_id
+  1623→├── movement_type
+  1624→├── quantity_change
+  1625→├── reference_type
+  1626→├── reference_id
+  1627→├── performed_by
+  1628→├── note
+  1629→└── created_at
+  1630→```
+  1631→
+  1632→Example:
+  1633→
+  1634→```text
+  1635→+20  STOCK_RECEIVED
+  1636→-2   SOLD
+  1637→+1   RETURN
+  1638→-1   DAMAGED
+  1639→+3   ADJUSTMENT
+  1640→```
+  1641→
+  1642→---
+  1643→
+  1644→# 14. Movement types
+  1645→
+  1646→I'd support:
+  1647→
+  1648→```text
+  1649→STOCK_RECEIVED
+  1650→SALE
+  1651→RESERVATION
+  1652→RESERVATION_RELEASE
+  1653→RETURN
+  1654→EXCHANGE_IN
+  1655→EXCHANGE_OUT
+  1656→DAMAGE
+  1657→LOST
+  1658→ADJUSTMENT
+  1659→```
+  1660→
+  1661→You don't necessarily need every one to affect `quantity`.
+  1662→
+  1663→For example:
+  1664→
+  1665→```text
+  1666→RESERVATION
+  1667→```
+  1668→
+  1669→primarily affects:
+  1670→
+  1671→```text
+  1672→reserved_quantity
+  1673→```
+  1674→
+  1675→while:
+  1676→
+  1677→```text
+  1678→SALE
+  1679→RETURN
+  1680→DAMAGE
+  1681→```
+  1682→
+  1683→affect actual inventory quantity.
+  1684→
+  1685→---
+  1686→
+  1687→# 15. Example complete history
+  1688→
+  1689→Suppose you initially receive 50 shirts.
+  1690→
+  1691→```text
+  1692→Date        Event              Change
+  1693→------------------------------------------------
+  1694→Aug 01      Stock received      +50
+  1695→Aug 03      Reserved             -3 reserved
+  1696→Aug 03      Reservation release  +3 available
+  1697→Aug 05      Reserved             -5 reserved
+  1698→Aug 05      Shipped/Sold         -5 stock
+  1699→Aug 12      Return               +1 stock
+  1700→Aug 13      Damaged              -1 stock
+  1701→```
+  1702→
+  1703→Current inventory can always be explained by the history.
+  1704→
+  1705→That's extremely useful when an admin asks:
+  1706→
+  1707→> "Why does the system say we have 42 shirts?"
+  1708→
+  1709→---
+  1710→
+  1711→# 16. 📊 Admin inventory dashboard
+  1712→
+  1713→Your admin should have:
+  1714→
+  1715→```text
+  1716→Inventory
+  1717→─────────────────────────────
+  1718→
+  1719→Total Products        12
+  1720→Total Variants        46
+  1721→Low Stock             8
+  1722→Out of Stock          3
+  1723→Reserved Items        14
+  1724→```
+  1725→
+  1726→Then:
+  1727→
+  1728→```text
+  1729→Oxford Shirt / Black / XL
+  1730→
+  1731→SKU: OS-BLK-XL
+  1732→
+  1733→Stock:       10
+  1734→Reserved:     3
+  1735→Available:    7
+  1736→
+  1737→[ Adjust Stock ]
+  1738→[ View History ]
+  1739→```
+  1740→
+  1741→---
+  1742→
+  1743→# 17. Low-stock alerts
+  1744→
+  1745→Each variant can have:
+  1746→
+  1747→```text
+  1748→low_stock_threshold
+  1749→```
+  1750→
+  1751→Example:
+  1752→
+  1753→```text
+  1754→Stock = 4
+  1755→Threshold = 5
+  1756→```
+  1757→
+  1758→Dashboard:
+  1759→
+  1760→> ⚠️ Low stock
+  1761→
+  1762→When:
+  1763→
+  1764→```text
+  1765→available <= threshold
+  1766→```
+  1767→
+  1768→the variant appears in the low-stock list.
+  1769→
+  1770→---
+  1771→
+  1772→# 18. Out-of-stock behavior
+  1773→
+  1774→When:
+  1775→
+  1776→```text
+  1777→available = 0
+  1778→```
+  1779→
+  1780→customer sees:
+  1781→
+  1782→```text
+  1783→❌ Out of Stock
+  1784→```
+  1785→
+  1786→and:
+  1787→
+  1788→```text
+  1789→[ Add to Cart ]
+  1790→```
+  1791→
+  1792→should be disabled.
+  1793→
+  1794→But **don't rely on this UI**.
+  1795→
+  1796→A customer might already have the product in their cart from 10 minutes ago.
+  1797→
+  1798→At checkout, the server must check stock again.
+  1799→
+  1800→---
+  1801→
+  1802→# 19. Cart vs inventory
+  1803→
+  1804→Don't reserve stock merely because someone clicks:
+  1805→
+  1806→> Add to Cart.
+  1807→
+  1808→Otherwise someone could put 20 shirts in their cart and leave the website, blocking everyone else.
+  1809→
+  1810→Instead:
+  1811→
+  1812→```text
+  1813→Add to cart
+  1814→    ↓
+  1815→No reservation
+  1816→
+  1817→Checkout
+  1818→    ↓
+  1819→Order created
+  1820→    ↓
+  1821→Reservation
+  1822→```
+  1823→
+  1824→This is much better.
+  1825→
+  1826→---
+  1827→
+  1828→# 20. Reservation expiry
+  1829→
+  1830→There is one issue:
+  1831→
+  1832→A customer creates a COD order and then disappears.
+  1833→
+  1834→If reservations never expire:
+  1835→
+  1836→```text
+  1837→Stock = 10
+  1838→Customer reserves 8
+  1839→Never responds
+  1840→```
+  1841→
+  1842→Only 2 remain available forever.
+  1843→
+  1844→So I recommend reservation/order expiration logic.
+  1845→
+  1846→For example:
+  1847→
+  1848→```text
+  1849→PENDING
+  1850→   ↓
+  1851→Reservation active
+  1852→   ↓
+  1853→Customer doesn't confirm
+  1854→   ↓
+  1855→Reservation expires
+  1856→   ↓
+  1857→Stock released
+  1858→```
+  1859→
+  1860→The exact timeout should be decided based on your agent workflow.
+  1861→
+  1862→---
+  1863→
+  1864→# 21. ⚠️ Don't use client-side stock calculations
+  1865→
+  1866→Bad:
+  1867→
+  1868→```text
+  1869→Browser:
+  1870→"Stock = 10"
+  1871→
+  1872→Customer:
+  1873→"I want 10"
+  1874→
+  1875→Browser:
+  1876→"Okay!"
+  1877→```
+  1878→
+  1879→Good:
+  1880→
+  1881→```text
+  1882→Browser
+  1883→  ↓
+  1884→Request order
+  1885→  ↓
+  1886→Server
+  1887→  ↓
+  1888→Database transaction
+  1889→  ↓
+  1890→Lock/check inventory
+  1891→  ↓
+  1892→Reserve stock
+  1893→  ↓
+  1894→Create order
+  1895→```
+  1896→
+  1897→This prevents race conditions.
+  1898→
+  1899→---
+  1900→
+  1901→# 22. Atomic stock reservation
+  1902→
+  1903→This is technically important.
+  1904→
+  1905→Two customers might simultaneously try to buy the last shirt:
+  1906→
+  1907→```text
+  1908→Stock = 1
+  1909→
+  1910→Customer A → 1
+  1911→Customer B → 1
+  1912→```
+  1913→
+  1914→The database operation must be atomic so that **only one succeeds**.
+  1915→
+  1916→Conceptually:
+  1917→
+  1918→```text
+  1919→BEGIN TRANSACTION
+  1920→
+  1921→Check available stock
+  1922→        ↓
+  1923→If available >= requested
+  1924→        ↓
+  1925→Reserve stock
+  1926→        ↓
+  1927→Create order
+  1928→
+  1929→COMMIT
+  1930→```
+  1931→
+  1932→Otherwise:
+  1933→
+  1934→```text
+  1935→Customer A → SUCCESS
+  1936→Customer B → SUCCESS
+  1937→Stock → -1 ❌
+  1938→```
+  1939→
+  1940→---
+  1941→
+  1942→# 23. Admin stock adjustment
+  1943→
+  1944→Admins need manual adjustment because real warehouses aren't perfect.
+  1945→
+  1946→Example:
+  1947→
+  1948→```text
+  1949→System says: 20
+  1950→Physical count: 18
+  1951→```
+  1952→
+  1953→Admin:
+  1954→
+  1955→```text
+  1956→[ Adjust Stock ]
+  1957→
+  1958→Current: 20
+  1959→New:     18
+  1960→
+  1961→Reason:
+  1962→Physical inventory correction
+  1963→```
+  1964→
+  1965→System records:
+  1966→
+  1967→```text
+  1968→ADJUSTMENT
+  1969→-2
+  1970→Admin: [name]
+  1971→Reason: Physical inventory correction
+  1972→```
+  1973→
+  1974→Never silently change `20 → 18`.
+  1975→
+  1976→---
+  1977→
+  1978→# 24. Who can manage inventory?
+  1979→
+  1980→### Admin
+  1981→
+  1982→Full control:
+  1983→
+  1984→```text
+  1985→View
+  1986→Add stock
+  1987→Remove stock
+  1988→Adjust stock
+  1989→View history
+  1990→```
+  1991→
+  1992→### Agent
+  1993→
+  1994→Probably:
+  1995→
+  1996→```text
+  1997→View stock
+  1998→View availability
+  1999→```
+  2000→
+
+[showing lines 1-2000 of 2175; use offset=2001 with limit to continue reading]
