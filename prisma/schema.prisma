@@ -1,0 +1,490 @@
+// ============================================================
+// Budget King BD — Prisma Schema (Milestone 1 MVP)
+// ============================================================
+// Designed per: product-management.md, Shopping-flow.md,
+// Order&delivery.md, Db-design&coin.md, role.md, Security-plan.md
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  CUSTOMER
+  AGENT
+  MODERATOR
+  ADMIN
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  OUT_OF_STOCK
+  ARCHIVED
+}
+
+enum VariantStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  DELIVERY_FAILED
+  RETURN_REQUESTED
+  RETURNED
+  EXCHANGE_REQUESTED
+  EXCHANGED
+}
+
+enum PaymentMethod {
+  COD
+}
+
+enum AttributeType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+}
+
+enum HomepageSectionType {
+  HERO
+  BANNER
+  PRODUCT_GRID
+  CATEGORY_GRID
+  TEXT
+  REVIEW_GRID
+  GROUP_PROMOTION
+  REWARD_PROMOTION
+}
+
+enum InventoryMovementType {
+  INITIAL
+  RESTOCK
+  RESERVED
+  RELEASED
+  SOLD
+  RETURNED
+  ADJUSTMENT
+  DAMAGED
+}
+
+// ============================================================
+// USERS & PROFILES
+// ============================================================
+
+model Profile {
+  id          String    @id // matches auth.users.id from Supabase
+  email       String    @unique
+  fullName    String?
+  phone       String?
+  avatarUrl   String?
+  role        UserRole  @default(CUSTOMER)
+  isStaff     Boolean    @default(false)
+  isSuspended Boolean    @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Customer relations
+  addresses   Address[]
+  orders      Order[]
+  reviews     Review[]
+  cartItems   CartItem[]
+
+  // Staff relations (agent who handles orders)
+  assignedOrders Order[] @relation("AgentOrders")
+
+  @@map("profiles")
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String? // e.g. "Home", "Office"
+  fullName  String
+  phone     String
+  division String
+  district String
+  area      String?
+  addressLine String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("addresses")
+}
+
+// ============================================================
+// CATALOG — Categories, Products, Variants, Images, Attributes
+// ============================================================
+
+model Category {
+  id          String     @id @default(cuid())
+  parentId   String?
+  name        String
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  parent   Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+  attributes Attribute[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  description   String?
+  shortDescription String?
+  categoryId    String
+  brand         String?
+  basePrice     Decimal       @db.Decimal(10, 2)
+  status        ProductStatus @default(DRAFT)
+  isFeatured    Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  category       Category         @relation(fields: [categoryId], references: [id])
+  variants       ProductVariant[]
+  images         ProductImage[]
+  attributeValues ProductAttributeValue[]
+  reviews        Review[]
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  homepageSections HomepageSectionProduct[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id              String        @id @default(cuid())
+  productId       String
+  sku             String        @unique
+  price           Decimal       @db.Decimal(10, 2)
+  compareAtPrice  Decimal?      @db.Decimal(10, 2)
+  status          VariantStatus @default(ACTIVE)
+  // Variant option values stored as JSONB — flexible (color/size/capacity/etc.)
+  options        Json
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory  Inventory?
+  images     ProductImage[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id         String  @id @default(cuid())
+  productId  String
+  variantId  String?
+  imageUrl   String
+  altText    String?
+  sortOrder  Int     @default(0)
+  isPrimary  Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant  ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@map("product_images")
+}
+
+// Dynamic attribute system (e.g. Material, Fit, Sleeve, Pattern)
+model Attribute {
+  id          String         @id @default(cuid())
+  name        String
+  type        AttributeType
+  categoryId  String?
+  isFilterable Boolean       @default(false)
+  createdAt   DateTime       @default(now())
+
+  category Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  values   ProductAttributeValue[]
+
+  @@map("attributes")
+}
+
+model ProductAttributeValue {
+  id          String   @id @default(cuid())
+  productId   String
+  attributeId String
+  value       String
+  createdAt   DateTime @default(now())
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute Attribute  @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, attributeId])
+  @@map("product_attribute_values")
+}
+
+// ============================================================
+// INVENTORY
+// ============================================================
+
+model Inventory {
+  id              String  @id @default(cuid())
+  variantId       String  @unique
+  quantity        Int     @default(0)
+  reserved        Int     @default(0) // locked by pending orders
+  updatedAt       DateTime @updatedAt
+
+  variant    ProductVariant       @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  movements InventoryMovement[]
+
+  @@map("inventory")
+}
+
+model InventoryMovement {
+  id         String              @id @default(cuid())
+  inventoryId String
+  type       InventoryMovementType
+  quantity   Int
+  note       String?
+  refOrderId String?
+  createdBy  String?
+  createdAt  DateTime            @default(now())
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_movements")
+}
+
+// ============================================================
+// CART (Customer logged-in state; guests use local Zustand)
+// ============================================================
+
+model CartItem {
+  id         String   @id @default(cuid())
+  userId     String
+  productId  String
+  variantId  String
+  quantity   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, variantId])
+  @@map("cart_items")
+}
+
+// ============================================================
+// DELIVERY ZONES & CHARGES
+// ============================================================
+
+model DeliveryZone {
+  id           String   @id @default(cuid())
+  name         String   @unique // e.g. "Dhaka", "Outside Dhaka"
+  divisions    String[] // list of divisions covered
+  charge       Decimal  @db.Decimal(10, 2)
+  estimatedDays Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders Order[]
+
+  @@map("delivery_zones")
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+model Order {
+  id              String       @id @default(cuid())
+  orderNumber     String       @unique // e.g. BK-2026-001024
+  userId          String? // null for guests
+  agentId         String? // assigned staff
+  status          OrderStatus  @default(PENDING)
+  paymentMethod   PaymentMethod @default(COD)
+
+  // Customer info snapshot (so order survives profile deletion / guest checkout)
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+
+  // Delivery snapshot
+  deliveryAddressJson Json
+  addressId       String?
+  deliveryZoneId  String?
+  deliveryCharge  Decimal      @db.Decimal(10, 2) @default(0)
+
+  // Pricing snapshot
+  subtotal        Decimal      @db.Decimal(10, 2)
+  discount        Decimal      @db.Decimal(10, 2) @default(0)
+  total           Decimal      @db.Decimal(10, 2)
+
+  // Voucher (Phase 5 — schema-ready)
+  voucherId       String?
+
+  // Tracking
+  notes           String?
+  cancelReason    String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  cancelledAt     DateTime?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user           Profile?        @relation(fields: [userId], references: [id])
+  agent          Profile?        @relation("AgentOrders", fields: [agentId], references: [id])
+  address        Address?        @relation(fields: [addressId], references: [id])
+  items          OrderItem[]
+  deliveryZone   DeliveryZone?   @relation(fields: [deliveryZoneId], references: [id])
+  statusHistory  OrderStatusHistory[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([agentId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  variantId   String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2) // snapshot
+  totalPrice  Decimal  @db.Decimal(10, 2) // snapshot
+
+  // Snapshot of product info at time of order
+  productName   String
+  variantLabel  String
+  productImage  String?
+  productSku    String
+
+  order    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product         @relation(fields: [productId], references: [id])
+  variant  ProductVariant  @relation(fields: [variantId], references: [id])
+
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String?
+  changedBy String?
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_status_history")
+}
+
+// ============================================================
+// REVIEWS
+// ============================================================
+
+model Review {
+  id                 String   @id @default(cuid())
+  userId             String
+  productId          String
+  orderId            String
+  rating             Int      // 1-5
+  title              String?
+  content            String?
+  status             String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  isVerifiedPurchase Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user    Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId, orderId])
+  @@map("reviews")
+}
+
+// ============================================================
+// HOMEPAGE CMS
+// ============================================================
+
+model HomepageSection {
+  id          String   @id @default(cuid())
+  sectionType HomepageSectionType
+  title       String?
+  subtitle    String?
+  content     String? // JSON blob for flexible content
+  imageUrl    String?
+  buttonText  String?
+  buttonLink  String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  productRefs HomepageSectionProduct[]
+
+  @@map("homepage_sections")
+}
+
+model HomepageSectionProduct {
+  sectionId  String
+  productId  String
+  sortOrder  Int @default(0)
+
+  section HomepageSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([sectionId, productId])
+  @@map("homepage_section_products")
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String? // user id who performed the action
+  actorRole String?
+  action    String // e.g. "order.confirm", "product.update", "inventory.adjust"
+  target    String? // e.g. "order:BK-2026-001024"
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
