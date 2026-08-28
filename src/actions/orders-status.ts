@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
+import { headers } from "next/headers";
 
 const Schema = z.object({
   orderId: z.string(),
@@ -42,6 +44,16 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
   const session = await getSession();
   if (!session?.profile || !["ADMIN", "AGENT"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
+  }
+
+  // Rate limit: 100 status updates per staff per minute
+  const rl = rateLimit({
+    key: `order:status:${session.id}`,
+    limit: RATE_LIMITS.ORDER_STATUS_UPDATE.limit,
+    windowMs: RATE_LIMITS.ORDER_STATUS_UPDATE.windowMs,
+  });
+  if (!rl.ok) {
+    return { ok: false, error: "Rate limit exceeded. Slow down." };
   }
 
   const parsed = Schema.safeParse(input);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { z } from "zod";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 
 const Schema = z.object({
   productId: z.string().min(1),
@@ -15,6 +16,19 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session?.profile) {
     return NextResponse.json({ error: "Please sign in to write a review" }, { status: 401 });
+  }
+
+  // Rate limit: 5 reviews per user per hour
+  const rl = rateLimit({
+    key: `review:create:${session.id}`,
+    limit: RATE_LIMITS.REVIEW_CREATE.limit,
+    windowMs: RATE_LIMITS.REVIEW_CREATE.windowMs,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "You've submitted too many reviews. Please try again later." },
+      { status: 429 }
+    );
   }
 
   const body = await request.json();

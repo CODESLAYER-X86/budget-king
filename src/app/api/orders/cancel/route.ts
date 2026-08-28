@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 cancellations per IP per 15 min
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown";
+  const rl = rateLimit({
+    key: `order:cancel:${ip}`,
+    limit: RATE_LIMITS.LOGIN_ATTEMPT.limit,
+    windowMs: RATE_LIMITS.LOGIN_ATTEMPT.windowMs,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many cancellation attempts. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const formData = await request.formData();
   const orderNumber = formData.get("orderNumber") as string;
   const reason = (formData.get("reason") as string) || "No reason provided";

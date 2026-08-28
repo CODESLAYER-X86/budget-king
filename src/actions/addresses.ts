@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
+import { headers } from "next/headers";
 
 const CreateSchema = z.object({
   label: z.string().max(50).optional(),
@@ -25,6 +27,16 @@ type Result = { ok: true; addressId: string } | { ok: false; error: string };
 export async function saveAddressAction(input: unknown): Promise<Result> {
   const session = await getSession();
   if (!session?.profile) return { ok: false, error: "Unauthorized" };
+
+  // Rate limit: 20 address saves per user per hour
+  const rl = rateLimit({
+    key: `address:save:${session.id}`,
+    limit: RATE_LIMITS.ADDRESS_SAVE.limit,
+    windowMs: RATE_LIMITS.ADDRESS_SAVE.windowMs,
+  });
+  if (!rl.ok) {
+    return { ok: false, error: "Too many address changes. Please try again later." };
+  }
 
   // Update mode?
   const updateParsed = UpdateSchema.safeParse(input);

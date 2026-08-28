@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 
 const VariantInputSchema = z.object({
   id: z.string().optional(),
@@ -35,6 +36,16 @@ export async function saveProductAction(input: unknown): Promise<SaveResult> {
   const session = await getSession();
   if (!session?.profile || session.profile.role !== "ADMIN") {
     return { ok: false, error: "Unauthorized" };
+  }
+
+  // Rate limit: 60 product saves per admin per minute
+  const rl = rateLimit({
+    key: `product:save:${session.id}`,
+    limit: RATE_LIMITS.INVENTORY_ADJUST.limit,
+    windowMs: RATE_LIMITS.INVENTORY_ADJUST.windowMs,
+  });
+  if (!rl.ok) {
+    return { ok: false, error: "Rate limit exceeded. Slow down." };
   }
 
   const parsed = SaveProductSchema.safeParse(input);

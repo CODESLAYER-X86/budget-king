@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
 import type { CheckoutResult } from "@/types/cart";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
+import { detectOrderAbuse, shouldBlockOrder } from "@/lib/security/abuse-detection";
+import { headers } from "next/headers";
 
 const LineSchema = z.object({
   variantId: z.string().min(1),
@@ -55,6 +58,54 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
 
   // 2. Authenticate (optional — guests can order)
   const session = await getSession();
+
+  // 2b. Rate limit: max 5 orders per IP per 10 minutes (Security-plan.md §19)
+  const hdrs = headers();
+  const ip =
+    hdrs.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    hdrs.get("x-real-ip") ??
+    "unknown";
+  const rlKey = `order:create:${ip}`;
+  const rl = rateLimit({
+    key: rlKey,
+    limit: RATE_LIMITS.ORDER_CREATE.limit,
+    windowMs: RATE_LIMITS.ORDER_CREATE.windowMs,
+  });
+  if (!rl.ok) {
+    return {
+      ok: false,
+      error: `Too many orders from your IP. Please try again in ${Math.ceil(
+        rl.retryAfterMs / 1000 / 60
+      )} minutes.`,
+    };
+  }
+
+  // 2c. Abuse detection: flag suspicious patterns (high-value first order,
+  // many pending orders from same phone, many recent cancellations)
+  // We compute the provisional total first to use in abuse detection.
+  const variantIds = data.lines.map((l) => l.variantId);
+  const quickVariants = await db.productVariant.findMany({
+    where: { id: { in: variantIds }, status: "ACTIVE" },
+    select: { id: true, price: true },
+  });
+  const provisionalSubtotal = data.lines.reduce((sum, line) => {
+    const v = quickVariants.find((x) => x.id === line.variantId);
+    return sum + (v ? Number(v.price) * line.quantity : 0);
+  }, 0);
+  const abuseWarnings = await detectOrderAbuse({
+    phone: data.customer.phone,
+    ip,
+    lines: data.lines,
+    total: provisionalSubtotal,
+  });
+  if (shouldBlockOrder(abuseWarnings)) {
+    // Don't reveal the reason to the attacker — return generic message
+    return {
+      ok: false,
+      error:
+        "Your order could not be processed at this time. Please contact support if you believe this is an error.",
+    };
+  }
 
   // 3. Atomic transaction: validate stock + create order + reserve inventory
   try {
@@ -201,7 +252,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         },
       });
 
-      // 3i. Audit log
+      // 3i. Audit log (includes abuse warnings if any)
       await tx.auditLog.create({
         data: {
           actorId: session?.id,
@@ -212,6 +263,8 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
             total,
             itemCount: data.lines.length,
             paymentMethod: "COD",
+            ip,
+            abuseWarnings: abuseWarnings.length > 0 ? abuseWarnings : undefined,
           } as any,
         },
       });
