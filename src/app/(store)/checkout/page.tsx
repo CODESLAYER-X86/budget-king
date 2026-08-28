@@ -1,25 +1,73 @@
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 import { CheckoutClient } from "./checkout-client";
-import { getSession } from "@/lib/auth/session";
+import { createServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
-  const session = await getSession();
+  // Lightweight session check — only calls Supabase if auth cookies exist
+  let user: { fullName: string; phone: string; email: string } | null = null;
+  let savedAddresses: Array<{
+    id: string;
+    label: string | null;
+    fullName: string;
+    phone: string;
+    division: string;
+    district: string;
+    area: string;
+    addressLine: string;
+    isDefault: boolean;
+  }> = [];
 
-  const [deliveryZones, addresses] = await Promise.all([
-    db.deliveryZone.findMany({
+  try {
+    const supabase = await createServerClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    if (authUser) {
+      const profile = await db.profile.findUnique({
+        where: { id: authUser.id },
+        select: { fullName: true, phone: true, email: true },
+      });
+
+      if (profile) {
+        user = {
+          fullName: profile.fullName ?? "",
+          phone: profile.phone ?? "",
+          email: profile.email,
+        };
+
+        const addresses = await db.address.findMany({
+          where: { userId: authUser.id },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+          take: 5,
+        });
+        savedAddresses = addresses.map((a) => ({
+          id: a.id,
+          label: a.label,
+          fullName: a.fullName,
+          phone: a.phone,
+          division: a.division,
+          district: a.district,
+          area: a.area ?? "",
+          addressLine: a.addressLine,
+          isDefault: a.isDefault,
+        }));
+      }
+    }
+  } catch {
+    // If auth/DB fails, just show guest checkout
+  }
+
+  // Fetch delivery zones (required for checkout)
+  let deliveryZones = [];
+  try {
+    deliveryZones = await db.deliveryZone.findMany({
       where: { isActive: true },
       orderBy: { charge: "asc" },
-    }),
-    session
-      ? db.address.findMany({
-          where: { userId: session.id },
-          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-        })
-      : [],
-  ]);
+    });
+  } catch {
+    // DB error — show error message
+  }
 
   if (deliveryZones.length === 0) {
     return (
@@ -41,26 +89,8 @@ export default async function CheckoutPage() {
         estimatedDays: z.estimatedDays,
         divisions: z.divisions,
       }))}
-      addresses={addresses.map((a) => ({
-        id: a.id,
-        label: a.label,
-        fullName: a.fullName,
-        phone: a.phone,
-        division: a.division,
-        district: a.district,
-        area: a.area ?? "",
-        addressLine: a.addressLine,
-        isDefault: a.isDefault,
-      }))}
-      user={
-        session?.profile
-          ? {
-              fullName: session.profile.fullName ?? "",
-              phone: session.profile.phone ?? "",
-              email: session.email,
-            }
-          : null
-      }
+      addresses={savedAddresses}
+      user={user}
     />
   );
 }
