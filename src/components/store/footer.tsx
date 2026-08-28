@@ -9,7 +9,7 @@ export function StoreFooter() {
           {/* Brand */}
           <div>
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <Crown className="h-6 w-6 text-primary" />
+              <img src="/logo.png" alt="Budget King BD" className="h-8 w-8 rounded-full" />
               <span className="text-lg font-bold">
                 Budget King <span className="text-primary">BD</span>
               </span>

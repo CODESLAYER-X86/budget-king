@@ -11,9 +11,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Budget King BD — Quality That Fits Your Budget",
+  title: "Budget King BD — Quality Without the Markup",
   description:
-    "Affordable clothing without compromising quality. Shop shirts with Cash on Delivery, earn Budget Coins, and shop together with friends.",
+    "Quality clothing without the markup. Shop shirts with Cash on Delivery, earn Budget Coins, and shop together with friends.",
   keywords: [
     "Budget King BD",
     "Bangladesh clothing",
@@ -22,10 +22,14 @@ export const metadata: Metadata = {
     "online shopping BD",
   ],
   authors: [{ name: "Budget King BD" }],
-  icons: { icon: "/logo.svg" },
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
   openGraph: {
     title: "Budget King BD",
-    description: "Quality That Fits Your Budget",
+    description: "Quality Without the Markup",
     siteName: "Budget King BD",
     type: "website",
   },

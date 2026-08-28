@@ -141,7 +141,7 @@ export function StoreNavbar({
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <Crown className="h-6 w-6 text-primary" />
+          <img src="/logo.png" alt="Budget King BD" className="h-8 w-8 rounded-full" />
           <span className="hidden text-lg font-bold tracking-tight sm:inline">
             Budget King <span className="text-primary">BD</span>
           </span>

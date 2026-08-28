@@ -4,16 +4,26 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Budget King BD",
     short_name: "Budget King",
-    description: "Quality That Fits Your Budget — Cash on Delivery everywhere in Bangladesh",
+    description: "Quality Without the Markup — Cash on Delivery everywhere in Bangladesh",
     start_url: "/",
     display: "standalone",
-    background_color: "#fff8e7",
+    background_color: "#000000",
     theme_color: "#d4a017",
     icons: [
       {
-        src: "/logo.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/favicon.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/favicon.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
       },
     ],
   };
