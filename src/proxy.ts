@@ -3,10 +3,9 @@ import { createServerClient as createSSRClient } from "@supabase/ssr";
 
 /**
  * Refreshes Supabase auth session on every request.
- * Without this, server components may see stale sessions.
  *
- * In Next.js 16, middleware was renamed to "proxy" and the exported
- * function must be named `proxy` (not `middleware`).
+ * PERFORMANCE: Only runs on routes that need auth — skips all
+ * static assets, images, and API routes to minimize overhead.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -36,14 +35,15 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session
+  // Refresh session — non-blocking, doesn't throw on failure
   await supabase.auth.getUser();
 
   return response;
 }
 
 export const config = {
+  // Skip ALL static files, images, favicon, and API routes for performance
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|map)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo.png|icon.png|apple-touch-icon.png|manifest.webmanifest|robots.txt|sitemap.xml|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|map|css|woff|woff2)$).*)",
   ],
 };

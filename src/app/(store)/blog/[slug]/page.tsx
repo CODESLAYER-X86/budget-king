@@ -8,7 +8,7 @@ import { Calendar, User, ArrowLeft, Share2 } from "lucide-react";
 import type { Metadata } from "next";
 import { BlogContent } from "./blog-content";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,

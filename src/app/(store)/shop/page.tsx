@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 type SearchParams = {
   q?: string;

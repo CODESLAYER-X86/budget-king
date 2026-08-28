@@ -14,7 +14,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+// Revalidate every 5 minutes instead of on every request
+export const revalidate = 300;
 
 async function getHomeData() {
   const [featured, categories, heroSection] = await Promise.all([
