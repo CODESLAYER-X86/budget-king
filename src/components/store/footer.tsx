@@ -34,10 +34,10 @@ export function StoreFooter() {
           <div>
             <h4 className="mb-4 text-sm font-semibold">Help</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-primary">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-primary">Contact</Link></li>
-              <li><Link href="/shipping" className="hover:text-primary">Shipping &amp; Delivery</Link></li>
-              <li><Link href="/returns" className="hover:text-primary">Returns &amp; Exchanges</Link></li>
+              <li><Link href="/info/about" className="hover:text-primary">About Us</Link></li>
+              <li><Link href="/info/contact" className="hover:text-primary">Contact</Link></li>
+              <li><Link href="/info/shipping" className="hover:text-primary">Shipping &amp; Delivery</Link></li>
+              <li><Link href="/info/returns" className="hover:text-primary">Returns &amp; Exchanges</Link></li>
             </ul>
           </div>
 
@@ -61,8 +61,8 @@ export function StoreFooter() {
         <div className="mt-8 border-t pt-6 flex flex-col sm:flex-row justify-between gap-4 text-xs text-muted-foreground">
           <p>© {new Date().getFullYear()} Budget King BD. All rights reserved.</p>
           <div className="flex gap-4">
-            <Link href="/privacy" className="hover:text-primary">Privacy</Link>
-            <Link href="/terms" className="hover:text-primary">Terms</Link>
+            <Link href="/info/privacy" className="hover:text-primary">Privacy</Link>
+            <Link href="/info/terms" className="hover:text-primary">Terms</Link>
           </div>
         </div>
       </div>

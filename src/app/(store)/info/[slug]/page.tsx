@@ -56,6 +56,41 @@ const pages: Record<string, { title: string; body: React.ReactNode }> = {
       </div>
     ),
   },
+  contact: {
+    title: "Contact Us",
+    body: (
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" /> +880 1XXX-XXXXXX</p>
+        <p>support@budgetkingbd.com</p>
+        <p>Dhaka, Bangladesh</p>
+        <p className="text-xs pt-4">Customer support hours: 10am–8pm (Sat–Thu)</p>
+      </div>
+    ),
+  },
+  privacy: {
+    title: "Privacy Policy",
+    body: (
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p>We respect your privacy. We only collect the information necessary to process your orders — your name, phone number, and delivery address.</p>
+        <p>We do not share your personal information with third parties except as required for order fulfillment (e.g., delivery agents).</p>
+        <p>Your Google account email is used only for authentication and order history. We do not access your Google data beyond what Supabase Auth provides.</p>
+        <p>For any privacy concerns, contact us at support@budgetkingbd.com.</p>
+      </div>
+    ),
+  },
+  terms: {
+    title: "Terms & Conditions",
+    body: (
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p>By placing an order on Budget King BD, you agree to these terms:</p>
+        <p><strong>Payment:</strong> All orders are Cash on Delivery (COD). You pay in cash when your order is delivered.</p>
+        <p><strong>Cancellation:</strong> You can cancel orders that are in PENDING or CONFIRMED status. Once shipped, cancellation is not possible — use the return/exchange process instead.</p>
+        <p><strong>Returns:</strong> Items can be exchanged within 7 days of delivery if unworn, unwashed, and with original tags.</p>
+        <p><strong>Budget Coins:</strong> Coins are awarded on delivered orders and can be redeemed for vouchers. Coins may be reversed if an order is cancelled or returned.</p>
+        <p><strong>Group Orders:</strong> When participating in a group order, the group owner is responsible for the combined payment upon delivery.</p>
+      </div>
+    ),
+  },
 };
 
 export function generateStaticParams() {
