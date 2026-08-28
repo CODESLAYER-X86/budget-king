@@ -317,7 +317,7 @@ export default async function ProductPage({
                   id: p.id,
                   slug: p.slug,
                   name: p.name,
-                  basePrice: p.basePrice,
+                  basePrice: Number(p.basePrice),
                   primaryImage: p.images[0]?.imageUrl ?? null,
                   outOfStock: p.variants.every(
                     (v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) <= 0

@@ -216,7 +216,7 @@ export default async function HomePage() {
                   id: p.id,
                   slug: p.slug,
                   name: p.name,
-                  basePrice: p.basePrice,
+                  basePrice: Number(p.basePrice),
                   primaryImage: p.images[0]?.imageUrl ?? null,
                   availableColors: extractColors(p.variants),
                   rating:

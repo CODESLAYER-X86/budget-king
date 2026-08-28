@@ -2,8 +2,8 @@
  * Format a number as Bangladeshi Taka.
  * User explicitly chose lowercase "tk" prefix.
  */
-export function formatTk(amount: number | string): string {
-  const n = typeof amount === "string" ? parseFloat(amount) : amount;
+export function formatTk(amount: number | string | { toString(): string }): string {
+  const n = typeof amount === "number" ? amount : parseFloat(String(amount));
   if (Number.isNaN(n)) return "tk 0";
   return `tk ${n.toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
 }
