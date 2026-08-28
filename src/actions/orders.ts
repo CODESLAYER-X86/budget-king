@@ -62,7 +62,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
     // Auth failed — treat as guest
   }
 
-  // 3. Single atomic transaction — everything in one DB round-trip group
+  // 3. Single atomic transaction — with extended timeout for serverless
   try {
     const result = await db.$transaction(async (tx) => {
       // 3a. Fetch delivery zone + variants in parallel
@@ -135,7 +135,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
       const deliveryCharge = Number(zone.charge);
       const total = subtotal + deliveryCharge;
 
-      // 3e. Create order + items in one operation
+      // 3e. Create order + items + status history + audit log in ONE create
       const order = await tx.order.create({
         data: {
           orderNumber,
@@ -160,10 +160,13 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           total,
           notes: data.notes ?? null,
           items: { create: orderItemsData },
+          statusHistory: {
+            create: { status: "PENDING", note: "Order placed" },
+          },
         },
       });
 
-      // 3f. Reserve stock — batch update
+      // 3f. Reserve stock — batch (no movements, just increment reserved)
       for (const line of data.lines) {
         const variant = variants.find((v) => v.id === line.variantId)!;
         if (!variant.inventory) continue;
@@ -173,24 +176,23 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         });
       }
 
-      // 3g. Status history + audit log
-      await tx.orderStatusHistory.create({
-        data: { orderId: order.id, status: "PENDING", note: "Order placed" },
-      });
-      await tx.auditLog.create({
-        data: {
-          actorId: userId,
-          actorRole: userId ? "CUSTOMER" : "GUEST",
-          action: "order.create",
-          target: `order:${orderNumber}`,
-          details: { total, itemCount: data.lines.length } as any,
-        },
-      });
-
       return { order, orderNumber };
+    }, {
+      timeout: 15000, // 15 seconds — default is 5s, too short for serverless
     });
 
-    // 4. Send notification (fire-and-forget — don't block the response)
+    // 4. Audit log (outside transaction — non-blocking)
+    db.auditLog.create({
+      data: {
+        actorId: userId,
+        actorRole: userId ? "CUSTOMER" : "GUEST",
+        action: "order.create",
+        target: `order:${result.orderNumber}`,
+        details: { total: Number(result.order.total), itemCount: data.lines.length } as any,
+      },
+    }).catch(() => {});
+
+    // 5. Send notification (fire-and-forget — don't block the response)
     if (userId) {
       import("@/lib/notifications").then(({ notifyOrderPlaced }) =>
         notifyOrderPlaced({

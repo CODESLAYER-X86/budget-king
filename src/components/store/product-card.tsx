@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { formatTk } from "@/lib/utils/currency";
 import { cn } from "@/lib/utils";
@@ -33,12 +32,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         {product.primaryImage ? (
-          <Image
+          <img
             src={product.primaryImage}
             alt={product.name}
-            fill
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-            className="object-cover transition-transform group-hover:scale-105"
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
