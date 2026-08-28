@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
 
 export const revalidate = 60;
-export const dynamic = "force-static";
 
 export async function generateMetadata({
   params,

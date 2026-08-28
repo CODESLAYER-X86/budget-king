@@ -28,13 +28,14 @@ export async function getSession(): Promise<SessionUser | null> {
 
   if (!user) return null;
 
-  // Ensure profile row exists (handles Google OAuth first login)
-  let profile = await db.profile.findUnique({
+  // Just fetch the profile — don't auto-create on every page load
+  // Profile creation happens in the auth callback or DB trigger
+  const profile = await db.profile.findUnique({
     where: { id: user.id },
   });
 
   if (!profile) {
-    // Check if this is the configured first-admin email
+    // Profile doesn't exist yet — create it (first login only)
     const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
     const userEmail = (user.email ?? "").trim().toLowerCase();
     const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
@@ -43,38 +44,30 @@ export async function getSession(): Promise<SessionUser | null> {
       userEmail === firstAdminEmail &&
       adminCount === 0;
 
-    profile = await db.profile.create({
-      data: {
-        id: user.id,
-        email: user.email ?? "",
-        fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-        avatarUrl: user.user_metadata?.avatar_url ?? null,
-        role: shouldBeAdmin ? "ADMIN" : "CUSTOMER",
-        isStaff: shouldBeAdmin,
-        isSupremeAdmin: shouldBeAdmin, // First admin is supreme — untouchable
-      },
-    });
-  } else {
-    // Profile already exists (e.g. created by the SQL trigger on signup).
-    // Check if they should be promoted to admin (bootstrap scenario).
-    const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
-    const userEmail = (user.email ?? "").trim().toLowerCase();
-    const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
-    if (
-      firstAdminEmail &&
-      userEmail === firstAdminEmail &&
-      profile.role !== "ADMIN" &&
-      adminCount === 0
-    ) {
-      profile = await db.profile.update({
-        where: { id: profile.id },
-        data: { role: "ADMIN", isStaff: true, isSupremeAdmin: true },
+    try {
+      const newProfile = await db.profile.create({
+        data: {
+          id: user.id,
+          email: user.email ?? "",
+          fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+          avatarUrl: user.user_metadata?.avatar_url ?? null,
+          role: shouldBeAdmin ? "ADMIN" : "CUSTOMER",
+          isStaff: shouldBeAdmin,
+          isSupremeAdmin: shouldBeAdmin,
+        },
       });
+      return { id: user.id, email: user.email ?? "", profile: newProfile };
+    } catch {
+      // Race condition — profile was created by DB trigger in parallel
+      const retryProfile = await db.profile.findUnique({ where: { id: user.id } });
+      if (retryProfile) {
+        return { id: user.id, email: user.email ?? "", profile: retryProfile };
+      }
+      return null;
     }
   }
 
   if (profile.isSuspended) {
-    // Sign them out — they should not be allowed in
     await supabase.auth.signOut();
     return null;
   }

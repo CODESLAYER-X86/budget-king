@@ -17,7 +17,6 @@ import {
 // Cache for 10 minutes — homepage content rarely changes
 export const revalidate = 600;
 // Enable static generation
-export const dynamic = "force-static";
 
 async function getHomeData() {
   const [featured, categories, heroSection] = await Promise.all([

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 export const revalidate = 60;
-export const dynamic = "force-static";
 
 export default async function CategoryPage({
   params,
