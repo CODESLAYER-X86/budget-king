@@ -16,7 +16,6 @@ import {
 
 // Cache for 10 minutes — homepage content rarely changes
 export const revalidate = 600;
-// Enable static generation
 
 async function getHomeData() {
   const [featured, categories, heroSection] = await Promise.all([
@@ -53,19 +52,8 @@ async function getHomeData() {
   return { featured, categories, heroSection };
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ ref?: string }>;
-}) {
-  const { ref } = await searchParams;
+export default async function HomePage() {
   const { featured, categories, heroSection } = await getHomeData();
-
-  // Track referral visit (fire-and-forget, doesn't block render)
-  if (ref) {
-    const { trackReferralVisitAction } = await import("@/actions/referrals");
-    trackReferralVisitAction(ref).catch(() => {});
-  }
 
   return (
     <>
