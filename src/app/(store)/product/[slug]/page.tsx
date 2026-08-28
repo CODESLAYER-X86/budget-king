@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ProductDetailClient } from "./product-detail-client";
 import { ProductCard } from "@/components/store/product-card";
+import { ShareToGroupButton } from "@/components/store/share-to-group-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
@@ -209,6 +210,11 @@ export default async function ProductPage({
 
           <div className="mt-4">
             <ProductDetailClient product={product} colors={colors} sizes={sizes} />
+          </div>
+
+          {/* Share to group */}
+          <div className="mt-4">
+            <ShareToGroupButton productId={product.id} />
           </div>
 
           {/* Trust badges */}

@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Star,
   Coins,
+  UsersRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const adminNav = [
   { href: "/admin/delivery-zones", label: "Delivery Zones", icon: Truck },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/rewards", label: "Rewards", icon: Coins },
+  { href: "/admin/groups", label: "Groups", icon: UsersRound },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

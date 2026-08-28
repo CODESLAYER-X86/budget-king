@@ -12,22 +12,22 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function ModeratorGroupsPage() {
+export default async function AdminGroupsPage() {
   const groups = await db.group.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
     include: {
       owner: { select: { email: true, fullName: true } },
-      _count: { select: { members: true, products: true } },
+      _count: { select: { members: true, products: true, cartItems: true, orders: true } },
     },
   });
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Group Moderation</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Groups</h1>
         <p className="text-sm text-muted-foreground">
-          {groups.length} groups — review content and suspend problematic groups.
+          {groups.length} total groups
         </p>
       </div>
 
@@ -41,14 +41,17 @@ export default async function ModeratorGroupsPage() {
                 <TableHead className="hidden md:table-cell">Owner</TableHead>
                 <TableHead className="text-center">Members</TableHead>
                 <TableHead className="text-center hidden sm:table-cell">Products</TableHead>
+                <TableHead className="text-center hidden sm:table-cell">Cart</TableHead>
+                <TableHead className="text-center hidden md:table-cell">Orders</TableHead>
                 <TableHead className="text-center">Status</TableHead>
+                <TableHead className="hidden md:table-cell">Created</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {groups.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No groups have been created yet.
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    No groups created yet.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -61,6 +64,8 @@ export default async function ModeratorGroupsPage() {
                     </TableCell>
                     <TableCell className="text-center text-sm">{g._count.members}</TableCell>
                     <TableCell className="text-center text-sm hidden sm:table-cell">{g._count.products}</TableCell>
+                    <TableCell className="text-center text-sm hidden sm:table-cell">{g._count.cartItems}</TableCell>
+                    <TableCell className="text-center text-sm hidden md:table-cell">{g._count.orders}</TableCell>
                     <TableCell className="text-center">
                       <Badge
                         variant={
@@ -71,6 +76,11 @@ export default async function ModeratorGroupsPage() {
                       >
                         {g.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                      {new Date(g.createdAt).toLocaleDateString("en-BD", {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
                     </TableCell>
                   </TableRow>
                 ))

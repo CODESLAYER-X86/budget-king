@@ -192,9 +192,9 @@ export default async function AccountPage() {
               <Link href="/rewards" className="flex items-center gap-2 text-primary hover:underline">
                 <Coins className="h-4 w-4" /> View My Rewards ({coinBalance.toLocaleString()} coins, {activeVoucherCount} vouchers)
               </Link>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Users className="h-4 w-4" /> Group Shopping (Phase 6)
-              </div>
+              <Link href="/groups" className="flex items-center gap-2 text-primary hover:underline">
+                <Users className="h-4 w-4" /> My Groups
+              </Link>
             </CardContent>
           </Card>
 
@@ -207,6 +207,7 @@ export default async function AccountPage() {
               <Link href="/orders" className="block text-primary hover:underline">View All Orders →</Link>
               <Link href="/addresses" className="block text-primary hover:underline">Manage Addresses →</Link>
               <Link href="/rewards" className="block text-primary hover:underline">My Rewards →</Link>
+              <Link href="/groups" className="block text-primary hover:underline">My Groups →</Link>
             </CardContent>
           </Card>
         </div>

@@ -29,6 +29,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
   { href: "/offers", label: "Offers" },
+  { href: "/groups", label: "Groups" },
   { href: "/track", label: "Track Order" },
 ];
 

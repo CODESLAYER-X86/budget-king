@@ -132,6 +132,13 @@ model Profile {
   coinTransactions CoinTransaction[]
   vouchers         CustomerVoucher[]
 
+  // Group relations
+  ownedGroups      Group[]          @relation("GroupOwner")
+  groupMemberships GroupMember[]
+  sharedGroupProducts GroupProduct[]
+  groupVotes       GroupVote[]
+  groupCartItems   GroupCartItem[]
+
   // Staff relations (agent who handles orders)
   assignedOrders   Order[] @relation("AgentOrders")
 
@@ -204,6 +211,7 @@ model Product {
   cartItems      CartItem[]
   orderItems     OrderItem[]
   homepageSections HomepageSectionProduct[]
+  sharedInGroups GroupProduct[]
 
   @@map("products")
 }
@@ -225,6 +233,7 @@ model ProductVariant {
   images     ProductImage[]
   cartItems  CartItem[]
   orderItems OrderItem[]
+  groupCartItems GroupCartItem[]
 
   @@map("product_variants")
 }
@@ -342,6 +351,7 @@ model DeliveryZone {
   updatedAt    DateTime @updatedAt
 
   orders Order[]
+  groups Group[]
 
   @@map("delivery_zones")
 }
@@ -377,6 +387,9 @@ model Order {
   // Voucher applied at checkout (Phase 5)
   appliedVoucherId String? @unique
 
+  // Group order (Phase 6) — set when this order is a group checkout
+  groupOrderId String?
+
   // Tracking
   notes           String?
   cancelReason    String?
@@ -395,6 +408,7 @@ model Order {
   statusHistory  OrderStatusHistory[]
   coinTransactions CoinTransaction[]
   appliedVoucher CustomerVoucher? @relation
+  group          Group?          @relation("GroupOrders", fields: [groupOrderId], references: [id])
 
   @@index([status])
   @@index([userId])
@@ -603,4 +617,118 @@ model CustomerVoucher {
 
   @@index([userId, status])
   @@map("customer_vouchers")
+}
+// ============================================================
+// GROUPS — Group Shopping (Phase 6)
+// ============================================================
+
+enum GroupMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum GroupStatus {
+  ACTIVE
+  SUSPENDED   // admin suspended
+  CLOSED      // owner closed it
+}
+
+enum GroupVoteType {
+  UP
+  DOWN
+}
+
+// A shopping group created by a customer
+model Group {
+  id              String       @id @default(cuid())
+  name            String
+  description     String?
+  code            String       @unique // short human-friendly invite code e.g. BK7X29
+  ownerId         String
+  status          GroupStatus  @default(ACTIVE)
+  maxMembers      Int          @default(20)
+  deliveryZoneId  String?
+  // Snapshot of common delivery address used at group checkout
+  deliveryAddressJson Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  owner          Profile           @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members        GroupMember[]
+  products       GroupProduct[]
+  cartItems      GroupCartItem[]
+  deliveryZone   DeliveryZone?    @relation(fields: [deliveryZoneId], references: [id])
+  orders         Order[]          @relation("GroupOrders")
+
+  @@index([ownerId])
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String          @id @default(cuid())
+  groupId   String
+  userId    String
+  role      GroupMemberRole @default(MEMBER)
+  joinedAt  DateTime        @default(now())
+
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+// A product shared into a group's feed for discussion/voting
+model GroupProduct {
+  id          String   @id @default(cuid())
+  groupId     String
+  userId      String // who shared it
+  productId   String
+  note        String? // optional comment from sharer
+  createdAt   DateTime @default(now())
+
+  group    Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product  Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  votes    GroupVote[]
+  cartItem GroupCartItem?
+
+  @@unique([groupId, productId])
+  @@index([groupId])
+  @@map("group_products")
+}
+
+model GroupVote {
+  id              String       @id @default(cuid())
+  groupProductId  String
+  userId          String
+  type            GroupVoteType
+  createdAt       DateTime     @default(now())
+
+  groupProduct GroupProduct @relation(fields: [groupProductId], references: [id], onDelete: Cascade)
+  user         Profile      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupProductId, userId])
+  @@map("group_votes")
+}
+
+// Items added to the group cart by members. Each item is owned by a member
+// (their contribution to the combined order).
+model GroupCartItem {
+  id              String   @id @default(cuid())
+  groupId         String
+  groupProductId  String   @unique // 1:1 with GroupProduct
+  userId          String   // who added this to the cart
+  variantId       String
+  quantity        Int      @default(1)
+  addedAt         DateTime @default(now())
+
+  group         Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupProduct  GroupProduct @relation(fields: [groupProductId], references: [id], onDelete: Cascade)
+  user          Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("group_cart_items")
 }
