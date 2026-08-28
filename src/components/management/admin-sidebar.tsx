@@ -16,6 +16,7 @@ import {
   Star,
   Coins,
   UsersRound,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ const adminNav = [
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/rewards", label: "Rewards", icon: Coins },
   { href: "/admin/groups", label: "Groups", icon: UsersRound },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

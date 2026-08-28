@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { formatTk } from "@/lib/utils/currency";
 import {
@@ -11,6 +12,7 @@ import {
   Clock,
   AlertTriangle,
   ArrowRight,
+  BarChart3,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -143,6 +145,28 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Analytics CTA */}
+      <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20">
+        <CardContent className="p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/20 p-2.5">
+              <BarChart3 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Want deeper insights?</p>
+              <p className="text-xs text-muted-foreground">
+                Sales charts, top products, customer retention, agent performance, group conversion.
+              </p>
+            </div>
+          </div>
+          <Link href="/admin/analytics">
+            <Button>
+              Open Analytics <ArrowRight className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Requires Attention */}
       <div className="grid gap-6 lg:grid-cols-2">
