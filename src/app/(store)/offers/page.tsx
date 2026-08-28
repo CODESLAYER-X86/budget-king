@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tag } from "lucide-react";
 
 export const revalidate = 60;
+export const dynamic = "force-static";
 
 export const metadata = {
   title: "Offers — Budget King BD",

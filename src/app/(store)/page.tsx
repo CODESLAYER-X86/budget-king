@@ -14,8 +14,10 @@ import {
   ShoppingBag,
 } from "lucide-react";
 
-// Revalidate every 5 minutes instead of on every request
-export const revalidate = 300;
+// Cache for 10 minutes — homepage content rarely changes
+export const revalidate = 600;
+// Enable static generation
+export const dynamic = "force-static";
 
 async function getHomeData() {
   const [featured, categories, heroSection] = await Promise.all([

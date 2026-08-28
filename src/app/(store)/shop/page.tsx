@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const revalidate = 60;
+export const dynamic = "force-static";
 
 type SearchParams = {
   q?: string;

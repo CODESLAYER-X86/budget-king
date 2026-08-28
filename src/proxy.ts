@@ -2,10 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient as createSSRClient } from "@supabase/ssr";
 
 /**
- * Refreshes Supabase auth session on every request.
- *
- * PERFORMANCE: Only runs on routes that need auth — skips all
- * static assets, images, and API routes to minimize overhead.
+ * ONLY runs on auth-protected routes — NOT on public pages.
+ * This prevents an extra Supabase round-trip on every product/shop/blog load.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
@@ -35,15 +33,34 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session — non-blocking, doesn't throw on failure
+  // Refresh session — non-blocking
   await supabase.auth.getUser();
 
   return response;
 }
 
 export const config = {
-  // Skip ALL static files, images, favicon, and API routes for performance
+  // ONLY run middleware on protected routes — skip ALL public pages
+  // This eliminates the Supabase auth round-trip on homepage, shop, product, blog, etc.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|logo.png|icon.png|apple-touch-icon.png|manifest.webmanifest|robots.txt|sitemap.xml|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|map|css|woff|woff2)$).*)",
+    "/admin/:path*",
+    "/agent/:path*",
+    "/moderator/:path*",
+    "/account/:path*",
+    "/account",
+    "/checkout/:path*",
+    "/checkout",
+    "/orders/:path*",
+    "/orders",
+    "/rewards/:path*",
+    "/rewards",
+    "/addresses/:path*",
+    "/addresses",
+    "/groups/:path*",
+    "/groups",
+    "/notifications/:path*",
+    "/notifications",
+    "/referrals/:path*",
+    "/referrals",
   ],
 };
