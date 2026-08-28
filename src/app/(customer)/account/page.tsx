@@ -188,6 +188,17 @@ export default async function AccountPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Quick links */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Quick Links</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <Link href="/orders" className="block text-primary hover:underline">View All Orders →</Link>
+              <Link href="/addresses" className="block text-primary hover:underline">Manage Addresses →</Link>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

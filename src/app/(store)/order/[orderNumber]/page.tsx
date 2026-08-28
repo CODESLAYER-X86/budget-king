@@ -5,6 +5,7 @@ import { CheckCircle2, Package, Truck, Home, XCircle } from "lucide-react";
 import { formatTk } from "@/lib/utils/currency";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReviewForm } from "./review-form";
 
 export const dynamic = "force-dynamic";
 
@@ -252,8 +253,40 @@ export default async function OrderDetailPage({
           {(order.status === "PENDING" || order.status === "CONFIRMED") && (
             <CancelOrderForm orderNumber={order.orderNumber} />
           )}
+
+          {/* Review prompt for delivered orders (authenticated customers only) */}
+          {order.status === "DELIVERED" && order.userId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Write a Review</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                <p>
+                  Tell us what you think of your purchase. Your review helps other
+                  shoppers make better decisions.
+                </p>
+                <ReviewList orderId={order.id} items={order.items} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReviewList({
+  orderId,
+  items,
+}: {
+  orderId: string;
+  items: Array<{ id: string; productId: string; productName: string }>;
+}) {
+  return (
+    <div className="mt-3 space-y-2">
+      {items.map((item) => (
+        <ReviewForm key={item.id} orderId={orderId} productId={item.productId} productName={item.productName} />
+      ))}
     </div>
   );
 }

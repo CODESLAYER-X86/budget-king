@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
+  { href: "/offers", label: "Offers" },
   { href: "/track", label: "Track Order" },
 ];
 

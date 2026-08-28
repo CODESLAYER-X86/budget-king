@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ProductDetailClient } from "./product-detail-client";
 import { ProductCard } from "@/components/store/product-card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,39 @@ import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await db.product.findUnique({
+    where: { slug },
+    select: { name: true, shortDescription: true, description: true, basePrice: true, brand: true, images: true },
+  });
+  if (!product) return { title: "Product not found — Budget King BD" };
+
+  const image = product.images[0]?.imageUrl;
+  const description = product.shortDescription ?? product.description ?? "Available at Budget King BD with Cash on Delivery";
+
+  return {
+    title: `${product.name} — Budget King BD`,
+    description: description.slice(0, 160),
+    openGraph: {
+      title: product.name,
+      description: description.slice(0, 160),
+      images: image ? [{ url: image, width: 600, height: 800, alt: product.name }] : undefined,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: description.slice(0, 160),
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 async function getProduct(slug: string) {
   const product = await db.product.findUnique({
@@ -275,6 +309,47 @@ export default async function ProductPage({
           </div>
         </section>
       )}
+
+      {/* JSON-LD structured data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: product.name,
+            description: product.shortDescription ?? product.description ?? undefined,
+            image: product.images.map((i) => i.imageUrl),
+            sku: product.variants[0]?.sku,
+            brand: product.brand
+              ? { "@type": "Brand", name: product.brand }
+              : undefined,
+            category: product.category.name,
+            offers: {
+              "@type": "AggregateOffer",
+              priceCurrency: "BDT",
+              lowPrice: Number(product.basePrice),
+              highPrice: product.variants.length > 0
+                ? Math.max(...product.variants.map((v) => Number(v.price)))
+                : Number(product.basePrice),
+              offerCount: product.variants.length,
+              availability:
+                product.variants.some(
+                  (v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) > 0
+                )
+                  ? "https://schema.org/InStock"
+                  : "https://schema.org/OutOfStock",
+            },
+            ...(avgRating != null && {
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: avgRating.toFixed(1),
+                reviewCount: product.reviews.length,
+              },
+            }),
+          }),
+        }}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Settings,
   Crown,
   ClipboardList,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const adminNav = [
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/delivery-zones", label: "Delivery Zones", icon: Truck },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
