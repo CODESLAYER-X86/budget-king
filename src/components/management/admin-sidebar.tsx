@@ -21,6 +21,7 @@ import {
   Ruler,
   Megaphone,
   Gift,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const adminNav = [
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/rewards", label: "Rewards", icon: Coins },
   { href: "/admin/groups", label: "Groups", icon: UsersRound },
+  { href: "/admin/staff", label: "Staff & Users", icon: UserCog },
   { href: "/admin/blog", label: "Blog", icon: FileText },
   { href: "/admin/size-guides", label: "Size Guides", icon: Ruler },
   { href: "/admin/banners", label: "Banners", icon: Megaphone },
