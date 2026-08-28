@@ -64,13 +64,42 @@ export function CheckoutClient({
     notes: "",
   });
 
+  const [voucherCode, setVoucherCode] = useState("");
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [validatingVoucher, setValidatingVoucher] = useState(false);
+
   const selectedZone = useMemo(
     () => deliveryZones.find((z) => z.id === selectedZoneId),
     [deliveryZones, selectedZoneId]
   );
 
   const deliveryCharge = selectedZone?.charge ?? 0;
-  const total = subtotal + deliveryCharge;
+  const total = Math.max(0, subtotal - voucherDiscount + deliveryCharge);
+
+  async function handleApplyVoucher() {
+    if (!voucherCode.trim()) return;
+    setValidatingVoucher(true);
+    setVoucherError(null);
+    try {
+      const res = await fetch("/api/vouchers/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: voucherCode, orderSubtotal: subtotal }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setVoucherError(data.error ?? "Invalid voucher");
+        setVoucherDiscount(0);
+      } else {
+        setVoucherDiscount(data.discount);
+        toast({ title: "Voucher applied", description: `Saved ${formatTk(data.discount)}` });
+      }
+    } catch {
+      setVoucherError("Failed to validate voucher");
+    }
+    setValidatingVoucher(false);
+  }
 
   if (lines.length === 0) {
     return (
@@ -108,6 +137,7 @@ export function CheckoutClient({
       },
       deliveryZoneId: selectedZoneId,
       notes: form.notes || undefined,
+      voucherCode: voucherCode || undefined,
       lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
     });
 
@@ -358,6 +388,48 @@ export function CheckoutClient({
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatTk(subtotal)}</span>
                 </div>
+
+                {/* Voucher */}
+                <div className="space-y-1.5">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                      placeholder="Voucher code (BKVC-...)"
+                      className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 text-xs font-mono uppercase"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleApplyVoucher}
+                      disabled={validatingVoucher || !voucherCode.trim()}
+                    >
+                      {validatingVoucher ? "..." : "Apply"}
+                    </Button>
+                  </div>
+                  {voucherError && (
+                    <p className="text-xs text-destructive">{voucherError}</p>
+                  )}
+                  {voucherDiscount > 0 && (
+                    <p className="text-xs text-green-600">
+                      ✓ Voucher applied — you save {formatTk(voucherDiscount)}
+                    </p>
+                  )}
+                  {!user && (
+                    <p className="text-xs text-muted-foreground">
+                      Sign in to redeem vouchers with your Budget Coins.
+                    </p>
+                  )}
+                </div>
+
+                {voucherDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Voucher discount</span>
+                    <span>-{formatTk(voucherDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery</span>
                   <span>{formatTk(deliveryCharge)}</span>

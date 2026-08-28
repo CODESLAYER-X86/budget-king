@@ -86,6 +86,28 @@ enum InventoryMovementType {
   DAMAGED
 }
 
+enum CoinTransactionType {
+  EARNED          // coins earned from a delivered order
+  EARNED_REVERSAL // reversal when an order is cancelled/returned after earning
+  REDEEMED        // coins spent to convert into a voucher
+  REDEEMED_REVERSAL
+  EXPIRED         // coins that hit their expiration date
+  ADMIN_ADJUSTMENT
+  REFERRAL_BONUS  // future
+}
+
+enum VoucherType {
+  FIXED_AMOUNT // tk X off
+  PERCENTAGE   // X% off
+}
+
+enum CustomerVoucherStatus {
+  ACTIVE    // available to use
+  USED      // applied to an order
+  EXPIRED   // passed expiry date
+  REVOKED   // admin revoked
+}
+
 // ============================================================
 // USERS & PROFILES
 // ============================================================
@@ -103,13 +125,15 @@ model Profile {
   updatedAt   DateTime  @updatedAt
 
   // Customer relations
-  addresses   Address[]
-  orders      Order[]
-  reviews     Review[]
-  cartItems   CartItem[]
+  addresses        Address[]
+  orders           Order[]
+  reviews          Review[]
+  cartItems        CartItem[]
+  coinTransactions CoinTransaction[]
+  vouchers         CustomerVoucher[]
 
   // Staff relations (agent who handles orders)
-  assignedOrders Order[] @relation("AgentOrders")
+  assignedOrders   Order[] @relation("AgentOrders")
 
   @@map("profiles")
 }
@@ -350,8 +374,8 @@ model Order {
   discount        Decimal      @db.Decimal(10, 2) @default(0)
   total           Decimal      @db.Decimal(10, 2)
 
-  // Voucher (Phase 5 — schema-ready)
-  voucherId       String?
+  // Voucher applied at checkout (Phase 5)
+  appliedVoucherId String? @unique
 
   // Tracking
   notes           String?
@@ -369,6 +393,8 @@ model Order {
   items          OrderItem[]
   deliveryZone   DeliveryZone?   @relation(fields: [deliveryZoneId], references: [id])
   statusHistory  OrderStatusHistory[]
+  coinTransactions CoinTransaction[]
+  appliedVoucher CustomerVoucher? @relation
 
   @@index([status])
   @@index([userId])
@@ -487,4 +513,94 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@map("audit_logs")
+}
+
+// ============================================================
+// REWARDS — Coins, Rules, Vouchers
+// (Phase 5)
+// ============================================================
+
+// Admin-configurable coin earning rule.
+// Example: minPurchase = 2000, coinsAwarded = 2000
+model CoinRule {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  minPurchase     Decimal  @db.Decimal(10, 2) // eligible merchandise subtotal
+  coinsAwarded    Int
+  isActive        Boolean  @default(true)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("coin_rules")
+}
+
+// Ledger of every coin movement. NEVER delete a row —
+// always insert an opposite-sign transaction to reverse.
+model CoinTransaction {
+  id              String             @id @default(cuid())
+  userId          String
+  type            CoinTransactionType
+  amount          Int // positive for credits, negative for debits
+  balanceAfter    Int // snapshot of balance after this transaction
+  orderId         String? // source order (for EARNED / EARNED_REVERSAL)
+  customerVoucherId String? @unique // the customer voucher redeemed (for REDEEMED)
+  ruleId          String? // which CoinRule triggered this
+  note            String?
+  expiresAt       DateTime? // for EARNED entries (coins expire after N days)
+  createdAt       DateTime           @default(now())
+
+  user     Profile             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order    Order?              @relation(fields: [orderId], references: [id])
+  voucher  CustomerVoucher?   @relation(fields: [customerVoucherId], references: [id])
+
+  // Idempotency: prevent duplicate EARNED entries for the same order
+  @@unique([orderId, type])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("coin_transactions")
+}
+
+// Voucher template (admin-defined). Customers convert coins into a customer_voucher.
+model Voucher {
+  id              String     @id @default(cuid())
+  name            String     @unique // display name, e.g. "tk 20 OFF"
+  type            VoucherType
+  value           Decimal    @db.Decimal(10, 2) // tk amount OR percentage points
+  coinCost        Int // coins required to redeem
+  minOrderValue   Decimal    @db.Decimal(10, 2) @default(0)
+  validDays       Int        @default(30) // customer voucher expires N days after redemption
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  customerVouchers CustomerVoucher[]
+
+  @@map("vouchers")
+}
+
+// A voucher redeemed by a specific customer.
+// Each redemption generates a unique code.
+model CustomerVoucher {
+  id              String              @id @default(cuid())
+  userId          String
+  voucherId       String
+  code            String              @unique // e.g. BKVC-7X29P
+  status          CustomerVoucherStatus @default(ACTIVE)
+  redeemedAt      DateTime            @default(now()) // when coins were spent
+  expiresAt       DateTime
+  usedOnOrderId   String? @unique // set when applied to an order
+  usedAt          DateTime?
+  revokedReason   String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user      Profile           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voucher   Voucher           @relation(fields: [voucherId], references: [id])
+  order     Order?            @relation(fields: [usedOnOrderId], references: [id])
+  coinTx    CoinTransaction? @relation
+
+  @@index([userId, status])
+  @@map("customer_vouchers")
 }

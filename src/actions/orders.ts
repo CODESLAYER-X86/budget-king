@@ -29,7 +29,7 @@ const CheckoutSchema = z.object({
   }),
   deliveryZoneId: z.string().min(1),
   notes: z.string().max(1000).optional(),
-  voucherCode: z.string().optional(),
+  voucherCode: z.string().max(20).optional(),
   lines: z.array(LineSchema).min(1, "Cart is empty"),
 });
 
@@ -190,7 +190,46 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
       });
 
       const deliveryCharge = Number(zone.charge);
-      const total = subtotal + deliveryCharge;
+
+      // 3e-bis. Validate & apply voucher if provided
+      let discount = 0;
+      let appliedVoucherId: string | undefined;
+      let customerVoucherForUpdate: { id: string } | null = null;
+
+      if (data.voucherCode && session?.id) {
+        const cv = await tx.customerVoucher.findUnique({
+          where: { code: data.voucherCode.toUpperCase().trim() },
+          include: { voucher: true },
+        });
+        if (!cv) {
+          throw new Error("Invalid voucher code");
+        }
+        if (cv.userId !== session.id) {
+          throw new Error("Voucher does not belong to you");
+        }
+        if (cv.status !== "ACTIVE") {
+          throw new Error(`Voucher is ${cv.status.toLowerCase()}`);
+        }
+        if (cv.expiresAt <= new Date()) {
+          throw new Error("Voucher has expired");
+        }
+        if (subtotal < Number(cv.voucher.minOrderValue)) {
+          throw new Error(
+            `Minimum order of tk ${Number(cv.voucher.minOrderValue)} required for this voucher`
+          );
+        }
+        // Calculate discount
+        if (cv.voucher.type === "FIXED_AMOUNT") {
+          discount = Number(cv.voucher.value);
+        } else {
+          discount = Math.round((subtotal * Number(cv.voucher.value)) / 100);
+        }
+        discount = Math.min(discount, subtotal);
+        appliedVoucherId = cv.id;
+        customerVoucherForUpdate = { id: cv.id };
+      }
+
+      const total = subtotal - discount + deliveryCharge;
 
       // 3f. Create order
       const order = await tx.order.create({
@@ -213,13 +252,26 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           deliveryZoneId: zone.id,
           deliveryCharge: zone.charge,
           subtotal,
-          discount: 0,
+          discount,
           total,
           notes: data.notes ?? null,
+          appliedVoucherId: appliedVoucherId ?? null,
           items: { create: orderItemsData },
         },
         include: { items: true },
       });
+
+      // 3f-bis. Mark voucher as USED (if applied)
+      if (customerVoucherForUpdate) {
+        await tx.customerVoucher.update({
+          where: { id: customerVoucherForUpdate.id },
+          data: {
+            status: "USED",
+            usedOnOrderId: order.id,
+            usedAt: new Date(),
+          },
+        });
+      }
 
       // 3g. Reserve stock + record movement
       for (const line of data.lines) {

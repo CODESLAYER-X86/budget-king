@@ -14,7 +14,7 @@ export default async function AccountPage() {
   const session = await getSession();
   if (!session?.profile) redirect("/login?next=/account");
 
-  const [orders, addresses] = await Promise.all([
+  const [orders, addresses, coinBalanceResult, activeVoucherCount] = await Promise.all([
     db.order.findMany({
       where: { userId: session.id },
       orderBy: { createdAt: "desc" },
@@ -25,7 +25,16 @@ export default async function AccountPage() {
       where: { userId: session.id },
       orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     }),
+    db.coinTransaction.aggregate({
+      where: { userId: session.id },
+      _sum: { amount: true },
+    }),
+    db.customerVoucher.count({
+      where: { userId: session.id, status: "ACTIVE" },
+    }),
   ]);
+
+  const coinBalance = coinBalanceResult._sum.amount ?? 0;
 
   const totalSpent = orders
     .filter((o) => o.status === "DELIVERED")
@@ -73,8 +82,8 @@ export default async function AccountPage() {
               <Coins className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">0</p>
-              <p className="text-xs text-muted-foreground">Budget Coins (Phase 5)</p>
+              <p className="text-2xl font-bold">{coinBalance.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Budget Coins</p>
             </div>
           </CardContent>
         </Card>
@@ -180,11 +189,11 @@ export default async function AccountPage() {
               <CardTitle className="text-base">Coming Soon</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              <Link href="/rewards" className="flex items-center gap-2 text-primary hover:underline">
+                <Coins className="h-4 w-4" /> View My Rewards ({coinBalance.toLocaleString()} coins, {activeVoucherCount} vouchers)
+              </Link>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Users className="h-4 w-4" /> Group Shopping (Phase 6)
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Coins className="h-4 w-4" /> Budget Coins (Phase 5)
               </div>
             </CardContent>
           </Card>
@@ -197,6 +206,7 @@ export default async function AccountPage() {
             <CardContent className="space-y-2 text-sm">
               <Link href="/orders" className="block text-primary hover:underline">View All Orders →</Link>
               <Link href="/addresses" className="block text-primary hover:underline">Manage Addresses →</Link>
+              <Link href="/rewards" className="block text-primary hover:underline">My Rewards →</Link>
             </CardContent>
           </Card>
         </div>

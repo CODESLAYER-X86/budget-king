@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
   // Here we trust that the form was reached from the verified order page.
 
   // Atomic: cancel order + release reserved stock + record history
+  // + restore voucher if one was used
   await db.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: order.id },
@@ -70,6 +71,18 @@ export async function POST(request: NextRequest) {
         changedBy: session?.id,
       },
     });
+
+    // Restore the voucher if one was applied (subject to its original expiry)
+    if (order.appliedVoucherId) {
+      await tx.customerVoucher.update({
+        where: { id: order.appliedVoucherId },
+        data: {
+          status: "ACTIVE", // restore
+          usedOnOrderId: null,
+          usedAt: null,
+        },
+      });
+    }
 
     // Release reserved stock
     const items = await tx.orderItem.findMany({ where: { orderId: order.id } });

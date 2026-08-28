@@ -1,0 +1,80 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
+import { db } from "@/lib/db";
+import { RewardsClient } from "./rewards-client";
+
+export const dynamic = "force-dynamic";
+
+export default async function RewardsPage() {
+  const session = await getSession();
+  if (!session?.profile) redirect("/login?next=/rewards");
+
+  const [balanceResult, transactions, vouchers, availableVouchers] = await Promise.all([
+    db.coinTransaction.aggregate({
+      where: { userId: session.id },
+      _sum: { amount: true },
+    }),
+    db.coinTransaction.findMany({
+      where: { userId: session.id },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      include: {
+        order: { select: { orderNumber: true } },
+        voucher: { select: { code: true, voucher: { select: { name: true } } } },
+      },
+    }),
+    db.customerVoucher.findMany({
+      where: { userId: session.id },
+      include: { voucher: true, order: { select: { orderNumber: true } } },
+      orderBy: { redeemedAt: "desc" },
+    }),
+    db.voucher.findMany({
+      where: { isActive: true },
+      orderBy: { coinCost: "asc" },
+    }),
+  ]);
+
+  const balance = balanceResult._sum.amount ?? 0;
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <RewardsClient
+        balance={balance}
+        transactions={transactions.map((t) => ({
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          balanceAfter: t.balanceAfter,
+          note: t.note,
+          createdAt: t.createdAt.toISOString(),
+          orderNumber: t.order?.orderNumber ?? null,
+          voucherCode: t.voucher?.code ?? null,
+          voucherName: t.voucher?.voucher.name ?? null,
+        }))}
+        myVouchers={vouchers.map((v) => ({
+          id: v.id,
+          code: v.code,
+          status: v.status,
+          redeemedAt: v.redeemedAt.toISOString(),
+          expiresAt: v.expiresAt.toISOString(),
+          usedOnOrderNumber: v.order?.orderNumber ?? null,
+          voucher: {
+            name: v.voucher.name,
+            type: v.voucher.type,
+            value: Number(v.voucher.value),
+            minOrderValue: Number(v.voucher.minOrderValue),
+          },
+        }))}
+        availableVouchers={availableVouchers.map((v) => ({
+          id: v.id,
+          name: v.name,
+          type: v.type,
+          value: Number(v.value),
+          coinCost: v.coinCost,
+          minOrderValue: Number(v.minOrderValue),
+          validDays: v.validDays,
+        }))}
+      />
+    </div>
+  );
+}
