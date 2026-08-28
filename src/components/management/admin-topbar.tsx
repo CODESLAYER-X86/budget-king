@@ -4,18 +4,9 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/co
 import { Button } from "@/components/ui/button";
 import { Menu, LogOut, Crown } from "lucide-react";
 import { AdminSidebar } from "./admin-sidebar";
-import { NotificationBell, type NotificationRow } from "@/components/shared/notification-bell";
 import type { SessionUser } from "@/lib/auth/session";
 
-export function AdminTopbar({
-  user,
-  notifications = [],
-  unreadCount = 0,
-}: {
-  user: SessionUser;
-  notifications?: NotificationRow[];
-  unreadCount?: number;
-}) {
+export function AdminTopbar({ user }: { user: SessionUser }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background px-4 lg:px-6">
       <Sheet>
@@ -36,11 +27,10 @@ export function AdminTopbar({
       </Sheet>
 
       <div className="flex-1">
-        <h1 className="font-semibold">Admin Dashboard</h1>
+        <h1 className="font-semibold">{user.profile?.role} Dashboard</h1>
       </div>
 
       <div className="flex items-center gap-3">
-        <NotificationBell notifications={notifications} unreadCount={unreadCount} />
         <div className="text-right text-sm hidden sm:block">
           <p className="font-medium">{user.profile?.fullName ?? user.email}</p>
           <p className="text-xs text-muted-foreground">{user.profile?.role}</p>
