@@ -7,6 +7,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
 import { awardOrderCoins, reverseOrderCoins } from "@/actions/rewards";
 import { notifyOrderStatusChange, notifyCoinsEarned, notifyCoinsReversed } from "@/lib/notifications";
+import { processReferralBonusOnDelivery } from "@/actions/referrals";
 
 const Schema = z.object({
   orderId: z.string(),
@@ -175,6 +176,10 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
       if (result.ok && result.awarded && result.awarded > 0) {
         await notifyCoinsEarned(order.userId, result.awarded, order.orderNumber).catch(() => {});
       }
+      // Process referral bonus (if the user was referred, award referrer)
+      await processReferralBonusOnDelivery(order.userId, order.id, order.orderNumber).catch((e) => {
+        console.error("Failed to process referral bonus:", e);
+      });
     }
     if (["CANCELLED", "RETURNED"].includes(data.newStatus) && order.userId) {
       const result = await reverseOrderCoins(order.id).catch((e) => {

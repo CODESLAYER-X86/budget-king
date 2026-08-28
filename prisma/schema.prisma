@@ -142,6 +142,11 @@ model Profile {
   // Notifications
   notifications    Notification[]
 
+  // Content & growth
+  blogPosts        BlogPost[]
+  referralCodes    ReferralCode[]
+  referredBy       ReferralEvent[]
+
   // Staff relations (agent who handles orders)
   assignedOrders   Order[] @relation("AgentOrders")
 
@@ -188,6 +193,7 @@ model Category {
   children Category[] @relation("CategoryHierarchy")
   products Product[]
   attributes Attribute[]
+  sizeGuide SizeGuide?
 
   @@map("categories")
 }
@@ -804,4 +810,117 @@ model Notification {
   @@index([roleTarget, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ============================================================
+// CONTENT & GROWTH (Phase 9)
+// ============================================================
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogPost {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  excerpt       String?
+  content       String        // markdown
+  coverImage    String?
+  categoryId    String?
+  tags          String[]      @default([])
+  status        BlogPostStatus @default(DRAFT)
+  publishedAt   DateTime?
+  authorId      String
+  viewCount     Int           @default(0)
+  metaDescription String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  author     Profile       @relation(fields: [authorId], references: [id])
+  category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
+}
+
+model BlogCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+
+  posts BlogPost[]
+
+  @@map("blog_categories")
+}
+
+// Size guide per category (e.g. shirts size chart)
+model SizeGuide {
+  id          String   @id @default(cuid())
+  categoryId  String   @unique
+  title       String
+  // JSON array of size rows: [{size:"M", chest:"100cm", length:"70cm", shoulder:"45cm"}, ...]
+  rows        Json
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("size_guides")
+}
+
+// Referral system
+model ReferralCode {
+  id          String   @id @default(cuid())
+  userId      String
+  code        String   @unique // user-friendly code, e.g. RAHIM-BK
+  uses        Int      @default(0)
+  successful  Int      @default(0) // referrals that resulted in a delivered order
+  createdAt   DateTime @default(now())
+
+  user     Profile          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events   ReferralEvent[]
+
+  @@index([userId])
+  @@map("referral_codes")
+}
+
+model ReferralEvent {
+  id              String   @id @default(cuid())
+  referrerCodeId  String
+  referredUserId  String? // null if guest signup (tracked via cookie)
+  referredEmail   String
+  status          String   @default("PENDING") // PENDING | SIGNED_UP | FIRST_ORDER | REWARDED
+  bonusCoinsAwarded Int   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  referrer   ReferralCode @relation(fields: [referrerCodeId], references: [id], onDelete: Cascade)
+  referred   Profile?     @relation(fields: [referredUserId], references: [id])
+
+  @@map("referral_events")
+}
+
+// Site-wide promotional banners with scheduling
+model Banner {
+  id          String   @id @default(cuid())
+  title       String
+  message     String
+  ctaText     String?
+  ctaLink     String?
+  bgColor     String   @default("#d4a017") // amber gold by default
+  textColor   String   @default("#ffffff")
+  placement   String   @default("top") // top | below_hero | footer
+  startsAt    DateTime?
+  endsAt      DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("banners")
 }

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, Coins, Users, MapPin, LogOut, Crown } from "lucide-react";
+import { Package, Coins, Users, MapPin, LogOut, Crown, Gift } from "lucide-react";
 import { formatTk } from "@/lib/utils/currency";
 
 export const dynamic = "force-dynamic";
@@ -194,6 +194,9 @@ export default async function AccountPage() {
               </Link>
               <Link href="/groups" className="flex items-center gap-2 text-primary hover:underline">
                 <Users className="h-4 w-4" /> My Groups
+              </Link>
+              <Link href="/referrals" className="flex items-center gap-2 text-primary hover:underline">
+                <Gift className="h-4 w-4" /> Refer Friends (earn 500 coins)
               </Link>
             </CardContent>
           </Card>

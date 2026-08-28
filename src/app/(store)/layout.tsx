@@ -2,6 +2,7 @@ import { StoreNavbar } from "@/components/store/navbar";
 import { StoreFooter } from "@/components/store/footer";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { SiteBanner } from "@/components/store/site-banner";
 
 export default async function StoreLayout({
   children,
@@ -58,8 +59,22 @@ export default async function StoreLayout({
     unreadCount = count;
   }
 
+  // Fetch active top banner
+  const topBanner = await db.banner.findFirst({
+    where: {
+      isActive: true,
+      placement: "top",
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gte: new Date() } }] },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
     <div className="flex min-h-screen flex-col">
+      {topBanner && <SiteBanner banner={topBanner} />}
       <StoreNavbar user={user} notifications={notifications} unreadCount={unreadCount} />
       <main className="flex-1">{children}</main>
       <StoreFooter />

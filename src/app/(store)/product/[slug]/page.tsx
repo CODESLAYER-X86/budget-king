@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { ProductDetailClient } from "./product-detail-client";
 import { ProductCard } from "@/components/store/product-card";
 import { ShareToGroupButton } from "@/components/store/share-to-group-button";
+import { SizeGuideButton } from "@/components/store/size-guide-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
@@ -57,6 +58,7 @@ async function getProduct(slug: string) {
         orderBy: { price: "asc" },
       },
       attributeValues: { include: { attribute: true } },
+      category: { include: { sizeGuide: true } },
       reviews: {
         where: { status: "APPROVED" },
         include: { user: { select: { fullName: true, email: true } } },
@@ -212,9 +214,20 @@ export default async function ProductPage({
             <ProductDetailClient product={product} colors={colors} sizes={sizes} />
           </div>
 
-          {/* Share to group */}
-          <div className="mt-4">
+          {/* Share to group + size guide */}
+          <div className="mt-4 flex flex-wrap gap-2">
             <ShareToGroupButton productId={product.id} />
+            <SizeGuideButton
+              guide={
+                product.category.sizeGuide
+                  ? {
+                      title: product.category.sizeGuide.title,
+                      rows: product.category.sizeGuide.rows as Array<Record<string, string>>,
+                      notes: product.category.sizeGuide.notes,
+                    }
+                  : null
+              }
+            />
           </div>
 
           {/* Trust badges */}

@@ -51,8 +51,19 @@ async function getHomeData() {
   return { featured, categories, heroSection };
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ref?: string }>;
+}) {
+  const { ref } = await searchParams;
   const { featured, categories, heroSection } = await getHomeData();
+
+  // Track referral visit (fire-and-forget, doesn't block render)
+  if (ref) {
+    const { trackReferralVisitAction } = await import("@/actions/referrals");
+    trackReferralVisitAction(ref).catch(() => {});
+  }
 
   return (
     <>
