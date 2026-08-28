@@ -113,16 +113,17 @@ enum CustomerVoucherStatus {
 // ============================================================
 
 model Profile {
-  id          String    @id // matches auth.users.id from Supabase
-  email       String    @unique
-  fullName    String?
-  phone       String?
-  avatarUrl   String?
-  role        UserRole  @default(CUSTOMER)
-  isStaff     Boolean    @default(false)
-  isSuspended Boolean    @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String    @id // matches auth.users.id from Supabase
+  email           String    @unique
+  fullName        String?
+  phone           String?
+  avatarUrl       String?
+  role            UserRole  @default(CUSTOMER)
+  isStaff         Boolean   @default(false)
+  isSuspended     Boolean   @default(false)
+  isSupremeAdmin  Boolean   @default(false) // The ONE admin who cannot be changed/suspended/deleted by anyone
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Customer relations
   addresses        Address[]

@@ -20,9 +20,11 @@ type Result = { ok: true } | { ok: false; error: string };
 /**
  * Update a user's role. Admin-only.
  *
- * Safeguards:
+ * EXTREME SECURITY safeguards:
  * - Cannot change your own role (prevents self-demotion lockout)
+ * - Cannot change the SUPREME ADMIN's role (untouchable)
  * - Cannot demote the last remaining admin (prevents no-admin lockout)
+ * - Only the supreme admin can promote others to ADMIN
  * - Notifies the affected user of their new role
  */
 export async function updateUserRoleAction(input: unknown): Promise<Result> {
@@ -44,7 +46,17 @@ export async function updateUserRoleAction(input: unknown): Promise<Result> {
   const target = await db.profile.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "User not found" };
 
-  // Safeguard 2: Cannot demote the last admin
+  // Safeguard 2: Cannot touch the supreme admin
+  if (target.isSupremeAdmin) {
+    return { ok: false, error: "The Supreme Admin cannot be modified by anyone" };
+  }
+
+  // Safeguard 3: Only the supreme admin can promote to ADMIN
+  if (role === "ADMIN" && !session.profile.isSupremeAdmin) {
+    return { ok: false, error: "Only the Supreme Admin can promote users to Admin" };
+  }
+
+  // Safeguard 4: Cannot demote the last admin
   if (target.role === "ADMIN" && role !== "ADMIN") {
     const adminCount = await db.profile.count({ where: { role: "ADMIN", isSuspended: false } });
     if (adminCount <= 1) {
@@ -108,8 +120,9 @@ export async function updateUserRoleAction(input: unknown): Promise<Result> {
 /**
  * Suspend or unsuspend a user. Admin-only.
  *
- * Safeguards:
+ * EXTREME SECURITY safeguards:
  * - Cannot suspend yourself
+ * - Cannot suspend the SUPREME ADMIN (untouchable)
  * - Cannot suspend the last admin
  */
 export async function toggleUserSuspensionAction(input: unknown): Promise<Result> {
@@ -129,6 +142,11 @@ export async function toggleUserSuspensionAction(input: unknown): Promise<Result
 
   const target = await db.profile.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "User not found" };
+
+  // Cannot touch the supreme admin
+  if (target.isSupremeAdmin) {
+    return { ok: false, error: "The Supreme Admin cannot be suspended by anyone" };
+  }
 
   // Cannot suspend the last admin
   if (target.role === "ADMIN" && !target.isSuspended) {

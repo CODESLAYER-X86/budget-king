@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Loader2, ShieldBan, ShieldCheck, Users } from "lucide-react";
+import { Search, Loader2, ShieldBan, ShieldCheck, Users, Crown, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { updateUserRoleAction, toggleUserSuspensionAction } from "@/actions/staff";
 
@@ -33,6 +33,7 @@ type User = {
   role: string;
   isStaff: boolean;
   isSuspended: boolean;
+  isSupremeAdmin: boolean;
   orderCount: number;
   createdAt: string;
 };
@@ -183,9 +184,19 @@ export function StaffManager({
                 users.map((u) => (
                   <TableRow key={u.id} className={u.isSuspended ? "opacity-50" : ""}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{u.fullName ?? "—"}</p>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                      <div className="flex items-center gap-2">
+                        {u.isSupremeAdmin && (
+                          <Crown className="h-4 w-4 text-primary shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-medium text-sm flex items-center gap-1.5">
+                            {u.fullName ?? "—"}
+                            {u.isSupremeAdmin && (
+                              <Badge className="text-xs bg-primary">SUPREME</Badge>
+                            )}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm">
@@ -195,27 +206,38 @@ export function StaffManager({
                       {u.orderCount}
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={u.role}
-                        onValueChange={(v) => handleRoleChange(u.id, v)}
-                        disabled={pending && updatingId === u.id}
-                      >
-                        <SelectTrigger className="h-8 w-[130px]">
-                          <SelectValue>
-                            <Badge variant={ROLE_BADGES[u.role] ?? "outline"} className="text-xs">
-                              {u.role}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CUSTOMER">Customer</SelectItem>
-                          <SelectItem value="AGENT">Agent</SelectItem>
-                          <SelectItem value="MODERATOR">Moderator</SelectItem>
-                          <SelectItem value="ADMIN">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {pending && updatingId === u.id && (
-                        <Loader2 className="inline-block ml-1 h-3 w-3 animate-spin" />
+                      {u.isSupremeAdmin ? (
+                        <div className="flex items-center gap-1.5 text-sm font-medium">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                          <Badge variant="default">ADMIN</Badge>
+                          <span className="text-xs text-muted-foreground">Locked</span>
+                        </div>
+                      ) : (
+                        <>
+                          <Select
+                            value={u.role}
+                            onValueChange={(v) => handleRoleChange(u.id, v)}
+                            disabled={pending && updatingId === u.id}
+                          >
+                            <SelectTrigger className="h-8 w-[130px]">
+                              <SelectValue>
+                                <Badge variant={ROLE_BADGES[u.role] ?? "outline"} className="text-xs">
+                                  {u.role}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CUSTOMER">Customer</SelectItem>
+                              <SelectItem value="AGENT">Agent</SelectItem>
+                              <SelectItem value="MODERATOR">Moderator</SelectItem>
+                              {/* Only supreme admin can see the "Admin" option */}
+                              <SelectItem value="ADMIN">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {pending && updatingId === u.id && (
+                            <Loader2 className="inline-block ml-1 h-3 w-3 animate-spin" />
+                          )}
+                        </>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
@@ -226,19 +248,25 @@ export function StaffManager({
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={pending}
-                        onClick={() => handleSuspend(u.id, u.isSuspended)}
-                        className={u.isSuspended ? "text-green-600" : "text-destructive"}
-                      >
-                        {u.isSuspended ? (
-                          <><ShieldCheck className="h-3.5 w-3.5 mr-1" /> Unsuspend</>
-                        ) : (
-                          <><ShieldBan className="h-3.5 w-3.5 mr-1" /> Suspend</>
-                        )}
-                      </Button>
+                      {u.isSupremeAdmin ? (
+                        <span className="text-xs text-muted-foreground italic">
+                          Untouchable
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={pending}
+                          onClick={() => handleSuspend(u.id, u.isSuspended)}
+                          className={u.isSuspended ? "text-green-600" : "text-destructive"}
+                        >
+                          {u.isSuspended ? (
+                            <><ShieldCheck className="h-3.5 w-3.5 mr-1" /> Unsuspend</>
+                          ) : (
+                            <><ShieldBan className="h-3.5 w-3.5 mr-1" /> Suspend</>
+                          )}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

@@ -57,6 +57,7 @@ export default async function AdminStaffPage({
           role: u.role,
           isStaff: u.isStaff,
           isSuspended: u.isSuspended,
+          isSupremeAdmin: u.isSupremeAdmin,
           orderCount: u._count.orders,
           createdAt: u.createdAt.toISOString(),
         }))}

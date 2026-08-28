@@ -37,11 +37,11 @@ export async function getSession(): Promise<SessionUser | null> {
     // Check if this is the configured first-admin email
     const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
     const userEmail = (user.email ?? "").trim().toLowerCase();
+    const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
     const shouldBeAdmin =
       firstAdminEmail &&
       userEmail === firstAdminEmail &&
-      // Only auto-promote if no admin exists yet (one-time bootstrap)
-      (await db.profile.count({ where: { role: "ADMIN" } })) === 0;
+      adminCount === 0;
 
     profile = await db.profile.create({
       data: {
@@ -51,6 +51,7 @@ export async function getSession(): Promise<SessionUser | null> {
         avatarUrl: user.user_metadata?.avatar_url ?? null,
         role: shouldBeAdmin ? "ADMIN" : "CUSTOMER",
         isStaff: shouldBeAdmin,
+        isSupremeAdmin: shouldBeAdmin, // First admin is supreme — untouchable
       },
     });
   } else {
@@ -58,15 +59,16 @@ export async function getSession(): Promise<SessionUser | null> {
     // Check if they should be promoted to admin (bootstrap scenario).
     const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
     const userEmail = (user.email ?? "").trim().toLowerCase();
+    const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
     if (
       firstAdminEmail &&
       userEmail === firstAdminEmail &&
       profile.role !== "ADMIN" &&
-      (await db.profile.count({ where: { role: "ADMIN" } })) === 0
+      adminCount === 0
     ) {
       profile = await db.profile.update({
         where: { id: profile.id },
-        data: { role: "ADMIN", isStaff: true },
+        data: { role: "ADMIN", isStaff: true, isSupremeAdmin: true },
       });
     }
   }
