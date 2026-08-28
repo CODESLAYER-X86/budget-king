@@ -7,6 +7,7 @@ import type { CheckoutResult } from "@/types/cart";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { detectOrderAbuse, shouldBlockOrder } from "@/lib/security/abuse-detection";
 import { headers } from "next/headers";
+import { notifyOrderPlaced } from "@/lib/notifications";
 
 const LineSchema = z.object({
   variantId: z.string().min(1),
@@ -323,6 +324,15 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
 
       return order;
     });
+
+    // Send notifications (non-blocking — failures shouldn't affect the order)
+    await notifyOrderPlaced({
+      id: result.id,
+      orderNumber: result.orderNumber,
+      userId: session?.id ?? null,
+      customerName: data.customer.fullName,
+      total,
+    }).catch(() => {});
 
     return { ok: true, orderNumber: result.orderNumber };
   } catch (e) {

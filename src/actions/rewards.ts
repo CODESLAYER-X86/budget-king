@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import type { CoinTransactionType } from "@prisma/client";
 import { headers } from "next/headers";
+import { notifyVoucherRedeemed } from "@/lib/notifications";
 
 // ============================================================
 // Coin balance helper — sum of all transactions for a user
@@ -307,6 +308,14 @@ export async function redeemVoucherAction(
 
       return customerVoucher;
     });
+
+    // Send notification
+    await notifyVoucherRedeemed(
+      session.id,
+      voucher.name,
+      result.code,
+      voucher.coinCost
+    ).catch(() => {});
 
     return { ok: true, voucherCode: result.code };
   } catch (e) {

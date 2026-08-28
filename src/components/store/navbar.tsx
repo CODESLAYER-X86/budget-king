@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart-store";
 import { CartDrawer } from "@/components/store/cart-drawer";
+import { NotificationBell, type NotificationRow } from "@/components/shared/notification-bell";
 import { useRouter } from "next/navigation";
 
 const navLinks = [
@@ -36,9 +37,13 @@ const navLinks = [
 export function StoreNavbar({
   user,
   cartCount,
+  notifications = [],
+  unreadCount = 0,
 }: {
   user?: { email: string; role: string } | null;
   cartCount?: number;
+  notifications?: NotificationRow[];
+  unreadCount?: number;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -189,11 +194,14 @@ export function StoreNavbar({
           </Button>
 
           {user ? (
-            <Link href="/account">
-              <Button variant="ghost" size="icon" aria-label="My account">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            <>
+              <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+              <Link href="/account">
+                <Button variant="ghost" size="icon" aria-label="My account">
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+            </>
           ) : (
             <Link href="/login">
               <Button variant="outline" size="sm" className="hidden sm:inline-flex">

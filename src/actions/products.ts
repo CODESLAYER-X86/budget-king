@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
+import { broadcastToRole } from "@/lib/notifications";
 
 const VariantInputSchema = z.object({
   id: z.string().optional(),
@@ -264,6 +265,30 @@ export async function saveProductAction(input: unknown): Promise<SaveResult> {
 
       return { productId };
     });
+
+    // After the product save, check for low-stock variants and notify admins
+    const lowStockVariants = await db.productVariant.findMany({
+      where: {
+        productId: result.productId,
+        status: "ACTIVE",
+        inventory: { quantity: { lte: 5 } },
+      },
+      include: { product: { select: { name: true } }, inventory: true },
+    });
+    for (const v of lowStockVariants) {
+      await broadcastToRole("ADMIN", {
+        type: "STAFF_LOW_STOCK",
+        title: "Low stock alert",
+        message: `${v.product.name} (${v.sku}) has only ${v.inventory?.quantity ?? 0} units left.`,
+        link: `/admin/inventory?filter=low`,
+        metadata: {
+          variantId: v.id,
+          sku: v.sku,
+          productName: v.product.name,
+          quantity: v.inventory?.quantity ?? 0,
+        },
+      }).catch(() => {});
+    }
 
     return { ok: true, productId: result.productId };
   } catch (e) {

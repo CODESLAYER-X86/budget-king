@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
 import { awardOrderCoins, reverseOrderCoins } from "@/actions/rewards";
+import { notifyOrderStatusChange, notifyCoinsEarned, notifyCoinsReversed } from "@/lib/notifications";
 
 const Schema = z.object({
   orderId: z.string(),
@@ -167,15 +168,34 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
     // - DELIVERED: award coins (idempotent, runs in a separate transaction)
     // - CANCELLED/RETURNED: reverse previously-earned coins (idempotent)
     if (data.newStatus === "DELIVERED" && order.userId) {
-      await awardOrderCoins(order.id).catch((e) => {
+      const result = await awardOrderCoins(order.id).catch((e) => {
         console.error("Failed to award coins:", e);
+        return { ok: false };
       });
+      if (result.ok && result.awarded && result.awarded > 0) {
+        await notifyCoinsEarned(order.userId, result.awarded, order.orderNumber).catch(() => {});
+      }
     }
     if (["CANCELLED", "RETURNED"].includes(data.newStatus) && order.userId) {
-      await reverseOrderCoins(order.id).catch((e) => {
+      const result = await reverseOrderCoins(order.id).catch((e) => {
         console.error("Failed to reverse coins:", e);
+        return { ok: false };
       });
+      if (result.ok && result.reversed && result.reversed > 0) {
+        await notifyCoinsReversed(order.userId, result.reversed, order.orderNumber).catch(() => {});
+      }
     }
+
+    // Always notify the customer of the status change
+    await notifyOrderStatusChange(
+      {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        userId: order.userId,
+        newStatus: data.newStatus,
+      },
+      data.reason
+    ).catch(() => {});
 
     return { ok: true };
   } catch (e) {

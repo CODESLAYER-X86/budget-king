@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
+import { notifyGroupEvent } from "@/lib/notifications";
 
 // ============================================================
 // Create a new group — caller becomes the OWNER
@@ -123,6 +124,13 @@ export async function joinGroupAction(
         },
       });
     });
+    // Notify group owner (and others) about the new member
+    await notifyGroupEvent(
+      group.id,
+      group.name,
+      "MEMBER_JOINED",
+      { actorName: session.profile?.fullName ?? session.email, memberCount: undefined }
+    ).catch(() => {});
     return { ok: true, groupId: group.id };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
@@ -233,6 +241,20 @@ export async function shareProductToGroupAction(
     const gp = await db.groupProduct.create({
       data: { groupId, userId: session.id, productId, note },
     });
+    // Notify group members about the shared product
+    const product = await db.product.findUnique({
+      where: { id: productId },
+      select: { name: true },
+    });
+    await notifyGroupEvent(
+      groupId,
+      group.name,
+      "PRODUCT_SHARED",
+      {
+        actorName: session.profile?.fullName ?? session.email,
+        productName: product?.name,
+      }
+    ).catch(() => {});
     return { ok: true, groupProductId: gp.id };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
@@ -729,6 +751,15 @@ export async function placeGroupOrderAction(
 
       return order;
     });
+
+    // Notify group members about the placed order
+    await notifyGroupEvent(
+      group.id,
+      group.name,
+      "ORDER_PLACED",
+      { actorName: session.profile?.fullName ?? session.email }
+    ).catch(() => {});
+
     return { ok: true, orderNumber: order.orderNumber };
   } catch (e) {
     return { ok: false, error: (e as Error).message };

@@ -139,6 +139,9 @@ model Profile {
   groupVotes       GroupVote[]
   groupCartItems   GroupCartItem[]
 
+  // Notifications
+  notifications    Notification[]
+
   // Staff relations (agent who handles orders)
   assignedOrders   Order[] @relation("AgentOrders")
 
@@ -731,4 +734,74 @@ model GroupCartItem {
 
   @@index([groupId])
   @@map("group_cart_items")
+}
+
+// ============================================================
+// NOTIFICATIONS (Phase 8)
+// In-app notifications for customers and staff.
+// Email notifications are sent separately via the email lib.
+// ============================================================
+
+enum NotificationType {
+  // Order events
+  ORDER_PLACED
+  ORDER_CONFIRMED
+  ORDER_PROCESSING
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_DELIVERY_FAILED
+  // Return / Exchange
+  RETURN_REQUESTED
+  RETURN_COMPLETED
+  EXCHANGE_REQUESTED
+  EXCHANGE_COMPLETED
+  // Reward events
+  COINS_EARNED
+  COINS_REVERSED
+  VOUCHER_REDEEMED
+  VOUCHER_EXPIRING_SOON
+  VOUCHER_EXPIRED
+  // Group events
+  GROUP_MEMBER_JOINED
+  GROUP_PRODUCT_SHARED
+  GROUP_VOTE_RECEIVED
+  GROUP_CART_UPDATED
+  GROUP_ORDER_PLACED
+  // Staff alerts
+  STAFF_NEW_ORDER
+  STAFF_CANCELLATION_REQUEST
+  STAFF_RETURN_REQUEST
+  STAFF_LOW_STOCK
+  // Generic
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  BOTH
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String? // null = broadcast to staff role
+  roleTarget  String? // if userId is null, broadcast to this role (e.g. "AGENT", "ADMIN")
+  type        NotificationType
+  title       String
+  message     String
+  link        String? // e.g. "/order/BK-2026-001024"
+  metadata    Json?
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  channel     NotificationChannel @default(IN_APP)
+  emailSentAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  user        Profile?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([roleTarget, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }
