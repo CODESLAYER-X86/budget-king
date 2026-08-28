@@ -34,21 +34,57 @@ bun run dev
 
 ## 🔑 Setting Up the Admin Account
 
-The seed script does NOT create auth users (it would need the Supabase service_role JWT, which is different from the database password). To get admin access:
+There are **two ways** to create the first admin:
 
-1. **Sign up** at `/login` using the dev sign-in form (any email/password)
-2. **Run this SQL** in the Supabase SQL Editor to elevate your account:
+### Method 1: Automatic (Recommended)
+
+1. **Set `FIRST_ADMIN_EMAIL` in your `.env` file**:
+   ```
+   FIRST_ADMIN_EMAIL="your-email@gmail.com"
+   ```
+2. **Sign up** at `/login` using Google OAuth or the dev sign-in form with that exact email
+3. The app **automatically promotes you to ADMIN** on first login
+4. Visit `/admin` to access the admin dashboard
+
+This is secure because:
+- Only the person with access to the `.env` file can set this
+- It only works if **no admin exists yet** (one-time bootstrap)
+- After the first admin is created, the env var becomes a no-op
+
+### Method 2: Manual SQL (Fallback)
+
+If you didn't set `FIRST_ADMIN_EMAIL` before signing up:
+
+1. **Sign up** at `/login` (you'll be a CUSTOMER by default)
+2. **Run this SQL** in the Supabase SQL Editor (Dashboard → SQL Editor):
 
 ```sql
 UPDATE profiles
 SET role = 'ADMIN', "isStaff" = true
-WHERE email = 'YOUR_EMAIL@example.com';
+WHERE email = 'your-email@gmail.com';
 ```
 
 3. **Sign out** and back in to refresh your session
 4. Visit `/admin` to access the admin dashboard
 
-To create an **agent** account, repeat with `role = 'AGENT'`.
+### Creating Staff Accounts (Agent / Moderator)
+
+Once you're an admin, you can create other staff accounts:
+
+1. Have the person **sign up** at `/login` with their Google account
+2. **Run SQL** in the Supabase SQL Editor to set their role:
+
+```sql
+-- Make someone an AGENT
+UPDATE profiles SET role = 'AGENT', "isStaff" = true
+WHERE email = 'agent-email@gmail.com';
+
+-- Make someone a MODERATOR
+UPDATE profiles SET role = 'MODERATOR', "isStaff" = true
+WHERE email = 'moderator-email@gmail.com';
+```
+
+3. They sign out and back in to get their new role
 
 ---
 
