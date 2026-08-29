@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/utils/date";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export default async function AdminAuditLogsPage() {
                 logs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell className="text-xs text-muted-foreground">
-                      {new Date(log.createdAt).toLocaleString("en-BD", {
+                      {formatDateTime(log.createdAt, {
                         day: "numeric", month: "short",
                         hour: "2-digit", minute: "2-digit",
                       })}

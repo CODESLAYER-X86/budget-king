@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/lib/utils/date";
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,13 @@ const NEXT_ACTION: Record<string, { label: string; action: string }> = {
   PROCESSING: { label: "Mark as Shipped", action: "SHIPPED" },
   SHIPPED: { label: "Mark as Delivered", action: "DELIVERED" },
 };
+
+// After shipping, show these additional options
+const POST_SHIP_ACTIONS = [
+  { label: "Mark Delivered", action: "DELIVERED", variant: "default" as const },
+  { label: "Delivery Failed", action: "DELIVERY_FAILED", variant: "destructive" as const },
+  { label: "Mark Returned", action: "RETURNED", variant: "destructive" as const },
+];
 
 export default async function AdminOrderDetailPage({
   params,
@@ -61,7 +69,7 @@ export default async function AdminOrderDetailPage({
         <div>
           <h1 className="text-2xl font-bold tracking-tight">#{order.orderNumber}</h1>
           <p className="text-sm text-muted-foreground">
-            Placed {new Date(order.createdAt).toLocaleString("en-BD")}
+            Placed {formatDateTime(order.createdAt)}
           </p>
         </div>
         <Badge className="text-sm">{order.status.replace(/_/g, " ")}</Badge>
@@ -86,10 +94,28 @@ export default async function AdminOrderDetailPage({
                 </div>
               </CardContent>
             </Card>
+          ) : order.status === "SHIPPED" ? (
+            <Card className="border-primary">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-3">Order is out for delivery. Update the outcome:</p>
+                <div className="flex flex-wrap gap-2">
+                  {POST_SHIP_ACTIONS.map((act) => (
+                    <OrderStatusActions
+                      key={act.action}
+                      orderId={order.id}
+                      currentStatus={order.status}
+                      nextStatus={act.action}
+                      nextLabel={act.label}
+                      variant={act.variant}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardContent className="p-4 text-sm text-muted-foreground">
-                No further actions available for this order.
+                Order is {order.status.replace(/_/g, " ").toLowerCase()}. No further actions available.
               </CardContent>
             </Card>
           )}
@@ -176,7 +202,7 @@ export default async function AdminOrderDetailPage({
                     <div>
                       <p className="font-medium">{h.status.replace(/_/g, " ")}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(h.createdAt).toLocaleString("en-BD")}
+                        {formatDateTime(h.createdAt)}
                         {h.note ? ` • ${h.note}` : ""}
                       </p>
                     </div>

@@ -6,6 +6,7 @@ import { ProductDetailClient } from "./product-detail-client";
 import { ProductCard } from "@/components/store/product-card";
 import { ShareToGroupButton } from "@/components/store/share-to-group-button";
 import { SizeGuideButton } from "@/components/store/size-guide-button";
+import { ProductGallery } from "./product-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
@@ -131,7 +132,6 @@ export default async function ProductPage({
       ? product.reviews.reduce((s, r) => s + r.rating, 0) / product.reviews.length
       : null;
 
-  const primaryImage = product.images.find((i) => i.isPrimary)?.imageUrl ?? product.images[0]?.imageUrl;
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -151,38 +151,15 @@ export default async function ProductPage({
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Gallery */}
         <div>
-          <div className="relative aspect-[3/4] overflow-hidden rounded-lg border bg-muted">
-            {primaryImage ? (
-              <img
-                src={primaryImage}
-                alt={product.name}
-                className="h-full w-full object-cover"
-                loading="eager"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                No image available
-              </div>
-            )}
-          </div>
-
-          {product.images.length > 1 && (
-            <div className="mt-3 grid grid-cols-5 gap-2">
-              {product.images.map((img) => (
-                <div
-                  key={img.id}
-                  className="relative aspect-square overflow-hidden rounded-md border bg-muted"
-                >
-                  <img
-                    src={img.imageUrl}
-                    alt={img.altText ?? product.name}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <ProductGallery
+            images={product.images.map((img) => ({
+              id: img.id,
+              imageUrl: img.imageUrl,
+              altText: img.altText,
+              isPrimary: img.isPrimary,
+            }))}
+            productName={product.name}
+          />
         </div>
 
         {/* Info + variant picker */}
