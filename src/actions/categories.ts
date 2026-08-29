@@ -16,7 +16,7 @@ type Result = { ok: true; categoryId: string } | { ok: false; error: string };
 
 export async function saveCategoryAction(input: unknown): Promise<Result> {
   const session = await getSession();
-  if (!session?.profile || session.profile.role !== "ADMIN") {
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
   }
   const parsed = SaveCategorySchema.safeParse(input);
@@ -52,7 +52,7 @@ export async function saveCategoryAction(input: unknown): Promise<Result> {
 
 export async function deleteCategoryAction(categoryId: string): Promise<Result> {
   const session = await getSession();
-  if (!session?.profile || session.profile.role !== "ADMIN") {
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
   }
   // Soft delete (deactivate) rather than hard delete

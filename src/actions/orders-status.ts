@@ -45,7 +45,7 @@ const TRANSITIONS: Record<string, string[]> = {
 
 export async function updateOrderStatusAction(input: unknown): Promise<Result> {
   const session = await getSession();
-  if (!session?.profile || !["ADMIN", "AGENT"].includes(session.profile.role)) {
+  if (!session?.profile || !["ADMIN", "AGENT", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
   }
 

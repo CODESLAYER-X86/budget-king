@@ -15,7 +15,7 @@ type Result = { ok: true; id: string } | { ok: false; error: string };
 
 async function requireAdmin() {
   const session = await getSession();
-  if (!session?.profile || session.profile.role !== "ADMIN") {
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     throw new Error("Unauthorized");
   }
   return session;

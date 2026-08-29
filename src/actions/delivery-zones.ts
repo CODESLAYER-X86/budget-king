@@ -20,7 +20,7 @@ type Result = { ok: true; zoneId: string } | { ok: false; error: string };
 
 export async function saveDeliveryZoneAction(input: unknown): Promise<Result> {
   const session = await getSession();
-  if (!session?.profile || session.profile.role !== "ADMIN") {
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
   }
 

@@ -26,7 +26,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const adminNav = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  adminOnly?: boolean; // if true, only ADMIN sees it (not MODERATOR)
+};
+
+const allNav: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
@@ -34,20 +41,24 @@ const adminNav = [
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/delivery-zones", label: "Delivery Zones", icon: Truck },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
-  { href: "/admin/rewards", label: "Rewards", icon: Coins },
+  { href: "/admin/rewards", label: "Rewards Config", icon: Coins, adminOnly: true },
   { href: "/admin/groups", label: "Groups", icon: UsersRound },
-  { href: "/admin/staff", label: "Staff & Users", icon: UserCog },
+  { href: "/admin/staff", label: "Staff & Users", icon: UserCog, adminOnly: true },
   { href: "/admin/blog", label: "Blog", icon: FileText },
   { href: "/admin/size-guides", label: "Size Guides", icon: Ruler },
   { href: "/admin/banners", label: "Banners", icon: Megaphone },
   { href: "/admin/referrals", label: "Referrals", icon: Gift },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList, adminOnly: true },
+  { href: "/admin/settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
 
 export function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname();
+  const isAdmin = role === "ADMIN";
+
+  // Moderators see everything EXCEPT admin-only items
+  const nav = allNav.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
@@ -59,8 +70,8 @@ export function AdminSidebar({ role }: { role: string }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
-        {adminNav.map((item) => {
+      <nav className="flex-1 space-y-1 p-3 overflow-y-auto bk-scroll">
+        {nav.map((item) => {
           const Icon = item.icon;
           const isActive =
             pathname === item.href ||

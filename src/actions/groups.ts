@@ -182,7 +182,7 @@ export async function closeGroupAction(
 
   const group = await db.group.findUnique({ where: { id: groupId } });
   if (!group) return { ok: false, error: "Group not found" };
-  if (group.ownerId !== session.id && session.profile.role !== "ADMIN") {
+  if (group.ownerId !== session.id && !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Only the owner can close the group" };
   }
 
@@ -382,7 +382,7 @@ export async function updateGroupCartItemQtyAction(
 
   const item = await db.groupCartItem.findUnique({ where: { id: cartItemId } });
   if (!item) return { ok: false, error: "Cart item not found" };
-  if (item.userId !== session.id && session.profile.role !== "ADMIN") {
+  if (item.userId !== session.id && !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "You can only edit your own cart items" };
   }
 

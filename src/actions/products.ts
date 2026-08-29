@@ -35,7 +35,7 @@ type SaveResult = { ok: true; productId: string } | { ok: false; error: string }
 
 export async function saveProductAction(input: unknown): Promise<SaveResult> {
   const session = await getSession();
-  if (!session?.profile || session.profile.role !== "ADMIN") {
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
   }
 
@@ -298,7 +298,7 @@ export async function saveProductAction(input: unknown): Promise<SaveResult> {
 
 export async function deleteProductAction(productId: string): Promise<SaveResult> {
   const session = await getSession();
-  if (!session?.profile || session.profile.role !== "ADMIN") {
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
     return { ok: false, error: "Unauthorized" };
   }
 
