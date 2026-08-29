@@ -29,15 +29,25 @@ export async function getSession(): Promise<SessionUser | null> {
         where: { id: user.id },
       });
     } catch (dbError) {
-      // If DB fails (pool exhausted), check if it's a connection error
+      // If DB fails (pool exhausted), try ONE more time after a short delay
       const msg = (dbError as Error).message;
       if (msg.includes("EMAXCONNSESSION") || msg.includes("FATAL") || msg.includes("connection")) {
-        console.error("DB connection error in getSession, returning null");
-        // Return null — user will be treated as not logged in
-        // They can refresh to try again
-        return null;
+        console.error("DB connection error in getSession, retrying...");
+        // Wait 500ms and try once more
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        try {
+          profile = await db.profile.findUnique({
+            where: { id: user.id },
+          });
+        } catch (retryError) {
+          console.error("DB retry also failed:", (retryError as Error).message);
+          // Return null — user will be treated as not logged in
+          // They can refresh to try again
+          return null;
+        }
+      } else {
+        throw dbError;
       }
-      throw dbError;
     }
 
     if (!profile) {
