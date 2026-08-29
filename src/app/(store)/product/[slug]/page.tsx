@@ -1,6 +1,5 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ProductDetailClient } from "./product-detail-client";
@@ -154,13 +153,11 @@ export default async function ProductPage({
         <div>
           <div className="relative aspect-[3/4] overflow-hidden rounded-lg border bg-muted">
             {primaryImage ? (
-              <Image
+              <img
                 src={primaryImage}
                 alt={product.name}
-                fill
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-cover"
-                priority
+                className="h-full w-full object-cover"
+                loading="eager"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
@@ -176,12 +173,11 @@ export default async function ProductPage({
                   key={img.id}
                   className="relative aspect-square overflow-hidden rounded-md border bg-muted"
                 >
-                  <Image
+                  <img
                     src={img.imageUrl}
                     alt={img.altText ?? product.name}
-                    fill
-                    sizes="100px"
-                    className="object-cover"
+                    className="h-full w-full object-cover"
+                    loading="lazy"
                   />
                 </div>
               ))}

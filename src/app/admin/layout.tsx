@@ -10,7 +10,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRole("ADMIN");
+  const session = await requireRole("ADMIN", "MODERATOR");
 
   return (
     <div className="flex min-h-screen bg-secondary/30">
