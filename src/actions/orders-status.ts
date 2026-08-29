@@ -165,25 +165,22 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
       });
     });
 
-    // After the transaction commits, handle side effects FIRE-AND-FORGET
-    // (don't await — these run in background and shouldn't block the response)
+    // After transaction commits, handle side effects
+    // These MUST be awaited on Vercel serverless — fire-and-forget
+    // doesn't work because the function gets killed before async ops complete
     if (data.newStatus === "DELIVERED" && order.userId) {
-      // Fire-and-forget: award coins, notifications, referral bonus
-      // These run asynchronously and don't block the HTTP response
-      import("@/actions/rewards").then(({ awardOrderCoins }) =>
-        awardOrderCoins(order.id).catch((e) => console.error("Coin award failed:", e))
-      );
-      import("@/lib/notifications").then(({ notifyOrderStatusChange }) =>
-        notifyOrderStatusChange(
-          { id: order.id, orderNumber: order.orderNumber, userId: order.userId, newStatus: "DELIVERED" },
-          data.reason
-        ).catch(() => {})
-      );
-      import("@/actions/referrals").then(({ processReferralBonusOnDelivery }) =>
-        processReferralBonusOnDelivery(order.userId, order.id, order.orderNumber).catch((e) =>
-          console.error("Referral bonus failed:", e)
-        )
-      );
+      try {
+        const { awardOrderCoins } = await import("@/actions/rewards");
+        const result = await awardOrderCoins(order.id);
+        if (result.ok && result.awarded && result.awarded > 0) {
+          // Notify (non-blocking — if this fails, coins are still awarded)
+          import("@/lib/notifications").then(({ notifyCoinsEarned }) =>
+            notifyCoinsEarned(order.userId!, result.awarded!, order.orderNumber).catch(() => {})
+          );
+        }
+      } catch (e) {
+        console.error("Coin award failed:", e);
+      }
     } else {
       // Non-blocking notification for other status changes
       import("@/lib/notifications").then(({ notifyOrderStatusChange }) =>
@@ -194,11 +191,14 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
       );
     }
 
-    // Reverse coins for cancellations (fire-and-forget)
+    // Reverse coins for cancellations
     if (["CANCELLED", "RETURNED"].includes(data.newStatus) && order.userId) {
-      import("@/actions/rewards").then(({ reverseOrderCoins }) =>
-        reverseOrderCoins(order.id).catch((e) => console.error("Coin reversal failed:", e))
-      );
+      try {
+        const { reverseOrderCoins } = await import("@/actions/rewards");
+        await reverseOrderCoins(order.id);
+      } catch (e) {
+        console.error("Coin reversal failed:", e);
+      }
     }
 
     return { ok: true };
