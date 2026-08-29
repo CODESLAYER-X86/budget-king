@@ -1,11 +1,29 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 
-export const metadata = {
-  title: "Track Your Order — Budget King BD",
-};
 
 export default function TrackOrderPage() {
+  const router = useRouter();
+  const [orderNumber, setOrderNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState("");
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    // Strip # prefix if user typed it
+    const cleanedOrderNumber = orderNumber.replace(/^#/, "").trim().toUpperCase();
+    if (!cleanedOrderNumber || !phone.trim()) {
+      setError("Please enter both order number and phone number.");
+      return;
+    }
+    // Redirect to order detail page with phone verification
+    router.push(`/order/${cleanedOrderNumber}?phone=${encodeURIComponent(phone.trim())}`);
+  }
+
   return (
     <div className="container mx-auto px-4 py-12">
       <nav className="mb-4 flex items-center gap-1 text-xs text-muted-foreground">
@@ -20,7 +38,7 @@ export default function TrackOrderPage() {
           Enter your order number and phone number to see the latest status.
         </p>
 
-        <form action="/order/" className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="orderNumber" className="text-sm font-medium">
               Order Number
@@ -30,7 +48,9 @@ export default function TrackOrderPage() {
               name="orderNumber"
               type="text"
               required
-              placeholder="e.g. BK-2026-001024"
+              value={orderNumber}
+              onChange={(e) => setOrderNumber(e.target.value)}
+              placeholder="BK-2026-001024"
               className="mt-1 flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -43,6 +63,8 @@ export default function TrackOrderPage() {
               name="phone"
               type="tel"
               required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               placeholder="01XXXXXXXXX"
               className="mt-1 flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -50,6 +72,9 @@ export default function TrackOrderPage() {
               Use the phone number you placed the order with.
             </p>
           </div>
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
           <button
             type="submit"
             className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
@@ -60,7 +85,7 @@ export default function TrackOrderPage() {
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Lost your order number?{" "}
-          <Link href="/contact" className="text-primary hover:underline">
+          <Link href="/info/contact" className="text-primary hover:underline">
             Contact support
           </Link>
         </p>
