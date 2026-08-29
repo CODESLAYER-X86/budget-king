@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AgentDashboardPage() {
   const session = await getSession();
-  if (!session?.profile || !["AGENT", "ADMIN"].includes(session.profile.role)) {
+  if (!session?.profile || !["AGENT", "ADMIN", "MODERATOR"].includes(session.profile.role)) {
     redirect("/login");
   }
 

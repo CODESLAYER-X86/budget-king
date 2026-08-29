@@ -10,7 +10,7 @@ export default async function AgentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireRole("AGENT", "ADMIN");
+  const session = await requireRole("AGENT", "ADMIN", "MODERATOR");
 
   return (
     <div className="flex min-h-screen bg-secondary/30">
