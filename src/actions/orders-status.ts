@@ -3,9 +3,9 @@
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
+import { awardOrderCoins, reverseOrderCoins } from "@/actions/rewards";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
-import { awardOrderCoins, reverseOrderCoins } from "@/actions/rewards";
 import { notifyOrderStatusChange, notifyCoinsEarned, notifyCoinsReversed } from "@/lib/notifications";
 import { processReferralBonusOnDelivery } from "@/actions/referrals";
 
@@ -170,31 +170,26 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
     // doesn't work because the function gets killed before async ops complete
     if (data.newStatus === "DELIVERED" && order.userId) {
       try {
-        const { awardOrderCoins } = await import("@/actions/rewards");
         const result = await awardOrderCoins(order.id);
         if (result.ok && result.awarded && result.awarded > 0) {
-          // Notify (non-blocking — if this fails, coins are still awarded)
-          import("@/lib/notifications").then(({ notifyCoinsEarned }) =>
-            notifyCoinsEarned(order.userId!, result.awarded!, order.orderNumber).catch(() => {})
-          );
+          await notifyCoinsEarned(order.userId, result.awarded, order.orderNumber).catch(() => {});
         }
       } catch (e) {
         console.error("Coin award failed:", e);
       }
-    } else {
-      // Non-blocking notification for other status changes
-      import("@/lib/notifications").then(({ notifyOrderStatusChange }) =>
-        notifyOrderStatusChange(
-          { id: order.id, orderNumber: order.orderNumber, userId: order.userId, newStatus: data.newStatus },
-          data.reason
-        ).catch(() => {})
-      );
     }
 
-    // Reverse coins for cancellations
+    // Notify customer of status change
+    if (order.userId) {
+      await notifyOrderStatusChange(
+        { id: order.id, orderNumber: order.orderNumber, userId: order.userId, newStatus: data.newStatus },
+        data.reason
+      ).catch(() => {});
+    }
+
+    // Reverse coins for cancellations/returns
     if (["CANCELLED", "RETURNED"].includes(data.newStatus) && order.userId) {
       try {
-        const { reverseOrderCoins } = await import("@/actions/rewards");
         await reverseOrderCoins(order.id);
       } catch (e) {
         console.error("Coin reversal failed:", e);

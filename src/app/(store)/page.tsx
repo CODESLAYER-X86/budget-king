@@ -80,7 +80,7 @@ export default async function HomePage() {
                   <ShieldCheck className="h-4 w-4 text-primary" /> Secure COD
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <RefreshCw className="h-4 w-4 text-primary" /> 7-day exchange
+                  <RefreshCw className="h-4 w-4 text-primary" /> Quality guaranteed
                 </span>
               </div>
             </div>
@@ -99,7 +99,7 @@ export default async function HomePage() {
             { icon: Truck, title: "Cash on Delivery", desc: "Pay when you receive" },
             { icon: Coins, title: "Budget Coins", desc: "Earn on every order" },
             { icon: Users, title: "Group Shopping", desc: "Shop together, save together" },
-            { icon: RefreshCw, title: "Easy Exchange", desc: "7-day hassle-free" },
+            { icon: RefreshCw, title: "Quality First", desc: "Premium fabrics" },
           ].map((v) => (
             <div key={v.title} className="flex items-start gap-3">
               <div className="rounded-lg bg-primary/10 p-2.5">

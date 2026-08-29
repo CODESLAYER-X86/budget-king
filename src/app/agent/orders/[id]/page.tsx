@@ -72,6 +72,40 @@ export default async function AgentOrderDetailPage({
                 </div>
               </CardContent>
             </Card>
+          ) : order.status === "SHIPPED" || order.status === "DELIVERED" ? (
+            <Card className="border-primary">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  {order.status === "SHIPPED"
+                    ? "Order is out for delivery. Update the outcome:"
+                    : "Order delivered. Update if needed:"}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {order.status === "SHIPPED" && (
+                    <OrderStatusActions
+                      orderId={order.id}
+                      currentStatus={order.status}
+                      nextStatus="DELIVERED"
+                      nextLabel="✅ Mark Delivered"
+                    />
+                  )}
+                  <OrderStatusActions
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    nextStatus="DELIVERY_FAILED"
+                    nextLabel="❌ Delivery Failed"
+                    variant="destructive"
+                  />
+                  <OrderStatusActions
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    nextStatus="RETURNED"
+                    nextLabel="↩️ Mark Returned"
+                    variant="destructive"
+                  />
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardContent className="p-4 text-sm text-muted-foreground">

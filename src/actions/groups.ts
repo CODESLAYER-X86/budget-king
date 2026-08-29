@@ -202,6 +202,85 @@ export async function closeGroupAction(
 }
 
 // ============================================================
+// Transfer group ownership to another member
+// ============================================================
+export async function transferGroupOwnershipAction(
+  groupId: string,
+  newOwnerId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session?.profile) return { ok: false, error: "Unauthorized" };
+
+  const group = await db.group.findUnique({ where: { id: groupId } });
+  if (!group) return { ok: false, error: "Group not found" };
+  if (group.ownerId !== session.id) {
+    return { ok: false, error: "Only the owner can transfer ownership" };
+  }
+
+  // Verify the new owner is a member
+  const newOwnerMembership = await db.groupMember.findUnique({
+    where: { groupId_userId: { groupId, userId: newOwnerId } },
+  });
+  if (!newOwnerMembership) {
+    return { ok: false, error: "The new owner must be a member of the group" };
+  }
+
+  await db.$transaction(async (tx) => {
+    // Update group owner
+    await tx.group.update({
+      where: { id: groupId },
+      data: { ownerId: newOwnerId },
+    });
+    // Update roles: old owner becomes MEMBER, new owner becomes OWNER
+    await tx.groupMember.update({
+      where: { groupId_userId: { groupId, userId: session.id } },
+      data: { role: "MEMBER" },
+    });
+    await tx.groupMember.update({
+      where: { groupId_userId: { groupId, userId: newOwnerId } },
+      data: { role: "OWNER" },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: session.id,
+        actorRole: session.profile.role,
+        action: "group.transfer_ownership",
+        target: `group:${groupId}`,
+        details: { newOwnerId } as any,
+      },
+    });
+  });
+  return { ok: true };
+}
+
+// ============================================================
+// Delete a group (owner only)
+// ============================================================
+export async function deleteGroupAction(
+  groupId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session?.profile) return { ok: false, error: "Unauthorized" };
+
+  const group = await db.group.findUnique({ where: { id: groupId } });
+  if (!group) return { ok: false, error: "Group not found" };
+  if (group.ownerId !== session.id && !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
+    return { ok: false, error: "Only the owner can delete the group" };
+  }
+
+  await db.group.delete({ where: { id: groupId } });
+  await db.auditLog.create({
+    data: {
+      actorId: session.id,
+      actorRole: session.profile.role,
+      action: "group.delete",
+      target: `group:${groupId}`,
+    },
+  });
+  return { ok: true };
+}
+
+// ============================================================
 // Share a product into a group's feed
 // ============================================================
 const ShareSchema = z.object({

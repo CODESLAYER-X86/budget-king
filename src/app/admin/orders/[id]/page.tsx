@@ -94,21 +94,37 @@ export default async function AdminOrderDetailPage({
                 </div>
               </CardContent>
             </Card>
-          ) : order.status === "SHIPPED" ? (
+          ) : order.status === "SHIPPED" || order.status === "DELIVERED" ? (
             <Card className="border-primary">
               <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground mb-3">Order is out for delivery. Update the outcome:</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {order.status === "SHIPPED"
+                    ? "Order is out for delivery. Update the outcome:"
+                    : "Order delivered. Update if needed:"}
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {POST_SHIP_ACTIONS.map((act) => (
+                  {order.status === "SHIPPED" && (
                     <OrderStatusActions
-                      key={act.action}
                       orderId={order.id}
                       currentStatus={order.status}
-                      nextStatus={act.action}
-                      nextLabel={act.label}
-                      variant={act.variant}
+                      nextStatus="DELIVERED"
+                      nextLabel="✅ Mark Delivered"
                     />
-                  ))}
+                  )}
+                  <OrderStatusActions
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    nextStatus="DELIVERY_FAILED"
+                    nextLabel="❌ Delivery Failed"
+                    variant="destructive"
+                  />
+                  <OrderStatusActions
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    nextStatus="RETURNED"
+                    nextLabel="↩️ Mark Returned"
+                    variant="destructive"
+                  />
                 </div>
               </CardContent>
             </Card>

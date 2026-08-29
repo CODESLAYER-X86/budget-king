@@ -50,7 +50,7 @@ const pages: Record<string, { title: string; body: React.ReactNode }> = {
     title: "Returns & Exchanges",
     body: (
       <div className="space-y-3 text-sm text-muted-foreground">
-        <p className="flex items-start gap-2"><RotateCcw className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>7-day exchange:</strong> Wrong size or color? Exchange within 7 days of delivery.</span></p>
+        <p className="flex items-start gap-2"><RotateCcw className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Quality guaranteed:</strong> Every product is quality-checked before shipping.</span></p>
         <p className="flex items-start gap-2"><ShieldCheck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Damaged items:</strong> Contact us within 48 hours of delivery with photos.</span></p>
         <p>Items must be unworn, unwashed, and with original tags. Refunds are processed manually via mobile transfer.</p>
       </div>

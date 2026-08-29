@@ -212,8 +212,8 @@ export default async function ProductPage({
               <p className="mt-1 text-xs font-medium">COD Delivery</p>
             </div>
             <div className="rounded-lg border p-3">
-              <RefreshCw className="mx-auto h-5 w-5 text-primary" />
-              <p className="mt-1 text-xs font-medium">7-Day Exchange</p>
+              <ShieldCheck className="mx-auto h-5 w-5 text-primary" />
+              <p className="mt-1 text-xs font-medium">COD Secure</p>
             </div>
             <div className="rounded-lg border p-3">
               <ShieldCheck className="mx-auto h-5 w-5 text-primary" />

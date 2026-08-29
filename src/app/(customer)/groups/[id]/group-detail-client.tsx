@@ -31,6 +31,8 @@ import {
   addToGroupCartAction,
   updateGroupCartItemQtyAction,
   closeGroupAction,
+  transferGroupOwnershipAction,
+  deleteGroupAction,
   placeGroupOrderAction,
 } from "@/actions/groups";
 
@@ -425,8 +427,54 @@ export function GroupDetailClient({
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Members ({group.members.length}/{group.maxMembers})</span>
                 {isOwner && group.status === "ACTIVE" && (
-                  <Button size="sm" variant="outline" onClick={handleClose} disabled={pending}>
-                    Close Group
+                  <>
+                    <Button size="sm" variant="outline" onClick={handleClose} disabled={pending}>
+                      Close Group
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => {
+                        const memberId = prompt("Enter the member ID to transfer ownership to:");
+                        if (!memberId) return;
+                        startTransition(async () => {
+                          const result = await transferGroupOwnershipAction(group.id, memberId);
+                          if (!result.ok) {
+                            toast({ title: "Failed", description: result.error, variant: "destructive" });
+                            return;
+                          }
+                          toast({ title: "Ownership transferred!" });
+                          router.push("/groups");
+                          router.refresh();
+                        });
+                      }}
+                    >
+                      Transfer Ownership
+                    </Button>
+                  </>
+                )}
+                {isOwner && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={pending}
+                    onClick={() => {
+                      if (!confirm("DELETE this group permanently? All members, products, and cart will be removed.")) return;
+                      startTransition(async () => {
+                        const result = await deleteGroupAction(group.id);
+                        if (!result.ok) {
+                          toast({ title: "Failed", description: result.error, variant: "destructive" });
+                          return;
+                        }
+                        toast({ title: "Group deleted" });
+                        router.push("/groups");
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    Delete Group
                   </Button>
                 )}
               </CardTitle>
