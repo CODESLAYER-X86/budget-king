@@ -4,12 +4,10 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Use the DIRECT connection (port 5432) for runtime queries.
-// This is faster than the pooler (port 6543) for Vercel serverless
-// because it avoids PgBouncer overhead and has a larger connection pool.
+// Use DATABASE_URL (pooler, port 6543) for runtime queries.
+// The pooler handles connection scaling for Vercel serverless.
 function createPrismaClient() {
-  // Prefer DIRECT_URL (port 5432) if available, fall back to DATABASE_URL
-  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+  const url = process.env.DATABASE_URL;
   return new PrismaClient({
     log: ["error"],
     datasources: {
