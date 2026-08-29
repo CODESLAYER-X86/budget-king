@@ -41,7 +41,7 @@ export function StoreNavbar({
   notifications = [],
   unreadCount = 0,
 }: {
-  user?: { email: string; role: string } | null;
+  user?: { email: string; role: string; fullName: string | null } | null;
   cartCount?: number;
   notifications?: NotificationRow[];
   unreadCount?: number;
@@ -109,13 +109,36 @@ export function StoreNavbar({
               </form>
               <div className="mt-4 border-t pt-4">
                 {user ? (
-                  <Link
-                    href="/account"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                  >
-                    <User className="h-4 w-4" /> My Account
-                  </Link>
+                  <>
+                    <Link
+                      href="/account"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                    >
+                      <User className="h-4 w-4" /> My Account
+                    </Link>
+                    <Link
+                      href="/orders"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                    >
+                      <Package className="h-4 w-4" /> My Orders
+                    </Link>
+                    <Link
+                      href="/rewards"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                    >
+                      <User className="h-4 w-4" /> Rewards
+                    </Link>
+                    <Link
+                      href="/auth/signout"
+                      onClick={() => setMobileOpen(false)}
+                      className="mt-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-accent"
+                    >
+                      <User className="h-4 w-4" /> Sign Out
+                    </Link>
+                  </>
                 ) : (
                   <Link
                     href="/login"
@@ -197,9 +220,13 @@ export function StoreNavbar({
           {user ? (
             <>
               <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+              <div className="hidden md:flex items-center gap-1">
+                <Link href="/orders" className="px-3 py-2 text-sm font-medium rounded-md hover:bg-accent">Orders</Link>
+                <Link href="/rewards" className="px-3 py-2 text-sm font-medium rounded-md hover:bg-accent">Rewards</Link>
+              </div>
               <Link href="/account">
                 <Button variant="ghost" size="icon" aria-label="My account">
-                  <User className="h-5 w-5" />
+                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
                 </Button>
               </Link>
             </>
