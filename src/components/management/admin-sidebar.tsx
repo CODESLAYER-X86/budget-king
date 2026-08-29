@@ -30,25 +30,26 @@ type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  adminOnly?: boolean; // if true, only ADMIN sees it (not MODERATOR)
+  adminOnly?: boolean;
+  agentVisible?: boolean;
 };
 
 const allNav: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, agentVisible: true },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, agentVisible: true },
+  { href: "/admin/products", label: "Products", icon: Package, agentVisible: true },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/delivery-zones", label: "Delivery Zones", icon: Truck },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
-  { href: "/admin/rewards", label: "Rewards Config", icon: Coins, adminOnly: true },
   { href: "/admin/groups", label: "Groups", icon: UsersRound },
-  { href: "/admin/staff", label: "Staff & Users", icon: UserCog, adminOnly: true },
+  { href: "/admin/rewards", label: "Rewards Config", icon: Coins, adminOnly: true },
   { href: "/admin/blog", label: "Blog", icon: FileText },
   { href: "/admin/size-guides", label: "Size Guides", icon: Ruler },
   { href: "/admin/banners", label: "Banners", icon: Megaphone },
   { href: "/admin/referrals", label: "Referrals", icon: Gift },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/staff", label: "Staff & Users", icon: UserCog, adminOnly: true },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList, adminOnly: true },
   { href: "/admin/settings", label: "Settings", icon: Settings, adminOnly: true },
 ];
@@ -57,8 +58,18 @@ export function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname();
   const isAdmin = role === "ADMIN";
 
-  // Moderators see everything EXCEPT admin-only items
-  const nav = allNav.filter((item) => !item.adminOnly || isAdmin);
+  // Filter nav items based on role
+  let nav: NavItem[];
+  if (role === "AGENT") {
+    // Agents only see: Dashboard + Orders + Products (view only)
+    nav = allNav.filter((item) => item.agentVisible);
+  } else if (role === "MODERATOR") {
+    // Moderators see everything except admin-only items
+    nav = allNav.filter((item) => !item.adminOnly);
+  } else {
+    // Admin sees everything
+    nav = allNav;
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
