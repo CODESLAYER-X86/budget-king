@@ -36,7 +36,7 @@ async function getProduct(slug: string) {
   });
 
   if (!product || product.status === "ARCHIVED") {
-    notFound();
+    return null;
   }
 
   // Serialize Decimal values to plain numbers for client components
@@ -89,6 +89,10 @@ export default async function ProductPage({
 }) {
   const { slug } = await params;
   const product = await getProduct(slug);
+
+  if (!product) {
+    notFound();
+  }
 
   // Related products (same category, excluding self)
   const related = await db.product.findMany({
