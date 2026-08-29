@@ -219,6 +219,16 @@ export function StoreNavbar({
 
           {user ? (
             <>
+              {user.role === "ADMIN" || user.role === "AGENT" || user.role === "MODERATOR" ? (
+                <div className="hidden md:flex items-center gap-1">
+                  <Link
+                    href={`/${user.role.toLowerCase()}`}
+                    className="px-3 py-2 text-sm font-medium rounded-md bg-secondary hover:bg-accent flex items-center gap-1"
+                  >
+                    <Package className="h-4 w-4" /> Dashboard
+                  </Link>
+                </div>
+              ) : null}
               <NotificationBell notifications={notifications} unreadCount={unreadCount} />
               <div className="hidden md:flex items-center gap-1">
                 <Link href="/orders" className="px-3 py-2 text-sm font-medium rounded-md hover:bg-accent">Orders</Link>

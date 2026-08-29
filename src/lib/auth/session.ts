@@ -11,68 +11,88 @@ export type SessionUser = {
 
 /**
  * Returns the authenticated user + their Profile, or null.
- * Use in server components / server actions.
- *
- * FIRST-ADMIN BOOTSTRAP:
- * If the env var FIRST_ADMIN_EMAIL is set and matches the signing-in
- * user's email, they are automatically promoted to ADMIN + isStaff=true.
- * This is the secure way to bootstrap the first admin without SQL access.
- * Once the first admin exists, they can promote other staff via SQL
- * (a future admin UI for staff management can be added later).
+ * Protected against DB connection errors (Supabase free tier).
  */
 export async function getSession(): Promise<SessionUser | null> {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return null;
+    if (!user) return null;
 
-  // Just fetch the profile — don't auto-create on every page load
-  // Profile creation happens in the auth callback or DB trigger
-  const profile = await db.profile.findUnique({
-    where: { id: user.id },
-  });
-
-  if (!profile) {
-    // Profile doesn't exist yet — create it (first login only)
-    const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
-    const userEmail = (user.email ?? "").trim().toLowerCase();
-    const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
-    const shouldBeAdmin =
-      firstAdminEmail &&
-      userEmail === firstAdminEmail &&
-      adminCount === 0;
-
+    // Fetch profile with error handling
+    let profile: Profile | null = null;
     try {
-      const newProfile = await db.profile.create({
-        data: {
-          id: user.id,
-          email: user.email ?? "",
-          fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-          avatarUrl: user.user_metadata?.avatar_url ?? null,
-          role: shouldBeAdmin ? "ADMIN" : "CUSTOMER",
-          isStaff: shouldBeAdmin,
-          isSupremeAdmin: shouldBeAdmin,
-        },
+      profile = await db.profile.findUnique({
+        where: { id: user.id },
       });
-      return { id: user.id, email: user.email ?? "", profile: newProfile };
-    } catch {
-      // Race condition — profile was created by DB trigger in parallel
-      const retryProfile = await db.profile.findUnique({ where: { id: user.id } });
-      if (retryProfile) {
-        return { id: user.id, email: user.email ?? "", profile: retryProfile };
+    } catch (dbError) {
+      // If DB fails (pool exhausted), check if it's a connection error
+      const msg = (dbError as Error).message;
+      if (msg.includes("EMAXCONNSESSION") || msg.includes("FATAL") || msg.includes("connection")) {
+        console.error("DB connection error in getSession, returning null");
+        // Return null — user will be treated as not logged in
+        // They can refresh to try again
+        return null;
       }
+      throw dbError;
+    }
+
+    if (!profile) {
+      // Profile doesn't exist yet — create it (first login only)
+      const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
+      const userEmail = (user.email ?? "").trim().toLowerCase();
+      let shouldBeAdmin = false;
+      
+      try {
+        const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
+        shouldBeAdmin =
+          firstAdminEmail &&
+          userEmail === firstAdminEmail &&
+          adminCount === 0;
+      } catch {
+        // If count fails, just create as CUSTOMER
+      }
+
+      try {
+        const newProfile = await db.profile.create({
+          data: {
+            id: user.id,
+            email: user.email ?? "",
+            fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+            avatarUrl: user.user_metadata?.avatar_url ?? null,
+            role: shouldBeAdmin ? "ADMIN" : "CUSTOMER",
+            isStaff: shouldBeAdmin,
+            isSupremeAdmin: shouldBeAdmin,
+          },
+        });
+        return { id: user.id, email: user.email ?? "", profile: newProfile };
+      } catch {
+        // Race condition — profile was created by DB trigger in parallel
+        try {
+          const retryProfile = await db.profile.findUnique({ where: { id: user.id } });
+          if (retryProfile) {
+            return { id: user.id, email: user.email ?? "", profile: retryProfile };
+          }
+        } catch {
+          // DB still failing
+        }
+        return null;
+      }
+    }
+
+    if (profile.isSuspended) {
+      await supabase.auth.signOut();
       return null;
     }
-  }
 
-  if (profile.isSuspended) {
-    await supabase.auth.signOut();
+    return { id: user.id, email: user.email ?? "", profile };
+  } catch (error) {
+    console.error("getSession error:", (error as Error).message);
     return null;
   }
-
-  return { id: user.id, email: user.email ?? "", profile };
 }
 
 /**
