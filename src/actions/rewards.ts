@@ -22,16 +22,13 @@ export async function getCoinBalance(userId: string): Promise<number> {
 // ============================================================
 // Award coins when an order is DELIVERED
 //
-// Idempotency: the unique constraint on (orderId, type) prevents
-// duplicate awards. If called twice for the same order, the second
-// call is a no-op.
-//
-// Eligibility:
-// - Order status = DELIVERED
-// - Order has a userId (guest orders don't earn coins)
-// - Order's merchandise subtotal >= minPurchase of an active CoinRule
-// - Earnings use the highest matching rule
-// - Coins expire after 365 days (configurable later)
+// RULE: 1 tk spent = 1 coin earned (no minimum threshold)
+// - Eligible amount = merchandise subtotal after discounts (excluding delivery)
+// - Example: tk 599 order → 599 coins
+// - Example: tk 1 order → 1 coin
+// - Guest orders (userId = null) don't earn coins
+// - Idempotent: unique constraint on (orderId, type) prevents duplicates
+// - Coins expire after 365 days
 // ============================================================
 export async function awardOrderCoins(orderId: string): Promise<{
   ok: boolean;
@@ -40,7 +37,6 @@ export async function awardOrderCoins(orderId: string): Promise<{
 }> {
   const order = await db.order.findUnique({
     where: { id: orderId },
-    include: { items: true },
   });
   if (!order) return { ok: false, error: "Order not found" };
   if (order.status !== "DELIVERED") {
@@ -51,24 +47,13 @@ export async function awardOrderCoins(orderId: string): Promise<{
     return { ok: true, awarded: 0 };
   }
 
-  // Find the best matching active rule
-  // Eligible amount = merchandise subtotal after discounts (excluding delivery)
+  // 1 tk spent = 1 coin (subtotal after discount, excluding delivery)
   const eligibleAmount = Number(order.subtotal) - Number(order.discount);
-  const rules = await db.coinRule.findMany({
-    where: {
-      isActive: true,
-      minPurchase: { lte: eligibleAmount },
-      AND: [
-        { OR: [{ startsAt: null }, { startsAt: { lte: new Date() } }] },
-        { OR: [{ endsAt: null }, { endsAt: { gte: new Date() } }] },
-      ],
-    },
-    orderBy: { coinsAwarded: "desc" },
-  });
-  if (rules.length === 0) {
+  const coinsToAward = Math.floor(eligibleAmount); // round down to whole coins
+
+  if (coinsToAward <= 0) {
     return { ok: true, awarded: 0 };
   }
-  const rule = rules[0];
 
   try {
     const result = await db.$transaction(async (tx) => {
@@ -88,7 +73,7 @@ export async function awardOrderCoins(orderId: string): Promise<{
         _sum: { amount: true },
       });
       const currentBalance = balanceResult._sum.amount ?? 0;
-      const newBalance = currentBalance + rule.coinsAwarded;
+      const newBalance = currentBalance + coinsToAward;
 
       // Expiry: 365 days from now
       const expiresAt = new Date();
@@ -99,11 +84,10 @@ export async function awardOrderCoins(orderId: string): Promise<{
         data: {
           userId: order.userId!,
           type: "EARNED",
-          amount: rule.coinsAwarded,
+          amount: coinsToAward,
           balanceAfter: newBalance,
           orderId,
-          ruleId: rule.id,
-          note: `Earned from order ${order.orderNumber} (rule: ${rule.name})`,
+          note: `Earned ${coinsToAward} coins from order ${order.orderNumber} (1 tk = 1 coin)`,
           expiresAt,
         },
       });
@@ -116,14 +100,13 @@ export async function awardOrderCoins(orderId: string): Promise<{
           action: "coin.award",
           target: `order:${order.orderNumber}`,
           details: {
-            amount: rule.coinsAwarded,
-            ruleId: rule.id,
+            amount: coinsToAward,
             eligibleAmount,
           } as any,
         },
       });
 
-      return { awarded: rule.coinsAwarded, alreadyAwarded: false };
+      return { awarded: coinsToAward, alreadyAwarded: false };
     });
 
     return { ok: true, awarded: result.awarded };
