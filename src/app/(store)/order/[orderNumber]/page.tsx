@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+
 import Link from "next/link";
 import { CheckCircle2, Package, Truck, Home, XCircle } from "lucide-react";
 import { formatTk } from "@/lib/utils/currency";
+import { safeQuery } from "@/lib/safe-query";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ReviewForm } from "./review-form";
@@ -27,38 +28,51 @@ function statusIndex(status: string): number {
 }
 
 export default async function OrderDetailPage({
+  params,
   searchParams,
 }: {
-  searchParams: Promise<{ orderNumber?: string; phone?: string }>;
+  params: Promise<{ orderNumber: string }>;
+  searchParams: Promise<{ phone?: string }>;
 }) {
-  const { orderNumber, phone } = await searchParams;
+  const { orderNumber: paramOrderNumber } = await params;
+  const { phone } = await searchParams;
 
-  if (!orderNumber) {
+  // The order number in the URL might not have the BK- prefix
+  // Normalize it: if it's just numbers, add BK-2026- prefix
+  let orderNumber = paramOrderNumber.toUpperCase().replace(/^#/, "");
+  if (/^\d+$/.test(orderNumber)) {
+    orderNumber = `BK-2026-${orderNumber.padStart(6, "0")}`;
+  }
+
+  const order = await safeQuery(
+    () => db.order.findUnique({
+      where: { orderNumber },
+      include: {
+        items: true,
+        statusHistory: { orderBy: { createdAt: "asc" } },
+      },
+    }),
+    null
+  );
+
+  if (!order) {
     return (
       <div className="container mx-auto px-4 py-12">
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">
-              Please provide an order number.{" "}
-              <Link href="/track" className="text-primary hover:underline">
-                Track your order here.
-              </Link>
+            <XCircle className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h1 className="mt-4 text-xl font-bold">Order not found</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              We couldn&apos;t find an order with number <strong>{orderNumber}</strong>.
             </p>
+            <Link href="/track" className="mt-4 inline-block text-primary hover:underline">
+              ← Try again
+            </Link>
           </CardContent>
         </Card>
       </div>
     );
   }
-
-  const order = await db.order.findUnique({
-    where: { orderNumber },
-    include: {
-      items: true,
-      statusHistory: { orderBy: { createdAt: "asc" } },
-    },
-  });
-
-  if (!order) notFound();
 
   // Guest verification: phone must match
   if (!order.userId && phone && phone !== order.customerPhone) {
@@ -71,11 +85,8 @@ export default async function OrderDetailPage({
             <p className="mt-1 text-sm text-muted-foreground">
               The phone number does not match this order.
             </p>
-            <Link
-              href="/track"
-              className="mt-4 inline-block text-primary hover:underline"
-            >
-              Try again
+            <Link href="/track" className="mt-4 inline-block text-primary hover:underline">
+              ← Try again
             </Link>
           </CardContent>
         </Card>
