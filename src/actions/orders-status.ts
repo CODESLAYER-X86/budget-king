@@ -165,42 +165,41 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
       });
     });
 
-    // After the transaction commits, handle side effects that may take time:
-    // - DELIVERED: award coins (idempotent, runs in a separate transaction)
-    // - CANCELLED/RETURNED: reverse previously-earned coins (idempotent)
+    // After the transaction commits, handle side effects FIRE-AND-FORGET
+    // (don't await — these run in background and shouldn't block the response)
     if (data.newStatus === "DELIVERED" && order.userId) {
-      const result = await awardOrderCoins(order.id).catch((e) => {
-        console.error("Failed to award coins:", e);
-        return { ok: false };
-      });
-      if (result.ok && result.awarded && result.awarded > 0) {
-        await notifyCoinsEarned(order.userId, result.awarded, order.orderNumber).catch(() => {});
-      }
-      // Process referral bonus (if the user was referred, award referrer)
-      await processReferralBonusOnDelivery(order.userId, order.id, order.orderNumber).catch((e) => {
-        console.error("Failed to process referral bonus:", e);
-      });
-    }
-    if (["CANCELLED", "RETURNED"].includes(data.newStatus) && order.userId) {
-      const result = await reverseOrderCoins(order.id).catch((e) => {
-        console.error("Failed to reverse coins:", e);
-        return { ok: false };
-      });
-      if (result.ok && result.reversed && result.reversed > 0) {
-        await notifyCoinsReversed(order.userId, result.reversed, order.orderNumber).catch(() => {});
-      }
+      // Fire-and-forget: award coins, notifications, referral bonus
+      // These run asynchronously and don't block the HTTP response
+      import("@/actions/rewards").then(({ awardOrderCoins }) =>
+        awardOrderCoins(order.id).catch((e) => console.error("Coin award failed:", e))
+      );
+      import("@/lib/notifications").then(({ notifyOrderStatusChange }) =>
+        notifyOrderStatusChange(
+          { id: order.id, orderNumber: order.orderNumber, userId: order.userId, newStatus: "DELIVERED" },
+          data.reason
+        ).catch(() => {})
+      );
+      import("@/actions/referrals").then(({ processReferralBonusOnDelivery }) =>
+        processReferralBonusOnDelivery(order.userId, order.id, order.orderNumber).catch((e) =>
+          console.error("Referral bonus failed:", e)
+        )
+      );
+    } else {
+      // Non-blocking notification for other status changes
+      import("@/lib/notifications").then(({ notifyOrderStatusChange }) =>
+        notifyOrderStatusChange(
+          { id: order.id, orderNumber: order.orderNumber, userId: order.userId, newStatus: data.newStatus },
+          data.reason
+        ).catch(() => {})
+      );
     }
 
-    // Always notify the customer of the status change
-    await notifyOrderStatusChange(
-      {
-        id: order.id,
-        orderNumber: order.orderNumber,
-        userId: order.userId,
-        newStatus: data.newStatus,
-      },
-      data.reason
-    ).catch(() => {});
+    // Reverse coins for cancellations (fire-and-forget)
+    if (["CANCELLED", "RETURNED"].includes(data.newStatus) && order.userId) {
+      import("@/actions/rewards").then(({ reverseOrderCoins }) =>
+        reverseOrderCoins(order.id).catch((e) => console.error("Coin reversal failed:", e))
+      );
+    }
 
     return { ok: true };
   } catch (e) {
