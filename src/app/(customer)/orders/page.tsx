@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { safeQuery } from "@/lib/safe-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,17 +34,25 @@ export default async function MyOrdersPage({
     ? { userId: session.id, status: status as any }
     : { userId: session.id };
 
-  const orders = await db.order.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { items: { take: 1 } },
-  });
-
-  const statusCounts = await db.order.groupBy({
-    by: ["status"],
-    where: { userId: session.id },
-    _count: { _all: true },
-  });
+  const [orders, statusCounts] = await Promise.all([
+    safeQuery(
+      () => db.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        include: { items: { take: 1 } },
+      }),
+      []
+    ),
+    safeQuery(
+      () => db.order.groupBy({
+        by: ["status"],
+        where: { userId: session.id },
+        _count: { _all: true },
+      }),
+      []
+    ),
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-8">

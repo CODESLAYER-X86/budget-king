@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { safeQuery } from "@/lib/safe-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { NotificationRow } from "@/components/shared/notification-bell";
 import { MarkAllReadButton } from "./mark-all-read-button";
-import { formatTk } from "@/lib/utils/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -41,45 +41,33 @@ export default async function NotificationsPage({
   if (!session?.profile) redirect("/login?next=/notifications");
 
   const { filter } = await searchParams;
-  const where =
-    filter === "unread"
-      ? {
-          isRead: false,
-          OR: [
-            { userId: session.id },
-            { userId: null, roleTarget: session.profile.role },
-          ],
-        }
-      : {
-          OR: [
-            { userId: session.id },
-            { userId: null, roleTarget: session.profile.role },
-          ],
-        };
+  const baseWhere = {
+    OR: [
+      { userId: session.id },
+      { userId: null, roleTarget: session.profile.role },
+    ],
+  };
+  const where = filter === "unread" ? { ...baseWhere, isRead: false } : baseWhere;
 
   const [notifications, unreadCount, totalCount] = await Promise.all([
-    db.notification.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    db.notification.count({
-      where: {
-        isRead: false,
-        OR: [
-          { userId: session.id },
-          { userId: null, roleTarget: session.profile.role },
-        ],
-      },
-    }),
-    db.notification.count({
-      where: {
-        OR: [
-          { userId: session.id },
-          { userId: null, roleTarget: session.profile.role },
-        ],
-      },
-    }),
+    safeQuery(
+      () => db.notification.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      []
+    ),
+    safeQuery(
+      () => db.notification.count({
+        where: { ...baseWhere, isRead: false },
+      }),
+      0
+    ),
+    safeQuery(
+      () => db.notification.count({ where: baseWhere }),
+      0
+    ),
   ]);
 
   const serialized: NotificationRow[] = notifications.map((n) => ({
@@ -130,51 +118,41 @@ export default async function NotificationsPage({
             <p className="mt-3">
               {filter === "unread"
                 ? "You're all caught up! No unread notifications."
-                : "No notifications yet. Place an order or join a group to start receiving them."}
+                : "No notifications yet."}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
           {serialized.map((n) => (
-            <NotificationRowItem key={n.id} notification={n} />
+            <Card key={n.id} className={n.isRead ? "" : "border-primary bg-primary/5"}>
+              <CardContent className="p-4 flex items-start gap-3">
+                <span className="text-xl shrink-0">
+                  {TYPE_ICONS[n.type] ?? "🔔"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{n.title}</p>
+                    {!n.isRead && <span className="h-2 w-2 rounded-full bg-primary" />}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">{n.message}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(n.createdAt).toLocaleString("en-BD", {
+                      day: "numeric", month: "long", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                {n.link && (
+                  <Link href={n.link}>
+                    <Button size="sm" variant="ghost">View →</Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
     </div>
-  );
-}
-
-function NotificationRowItem({ notification }: { notification: NotificationRow }) {
-  return (
-    <Card className={notification.isRead ? "" : "border-primary bg-primary/5"}>
-      <CardContent className="p-4 flex items-start gap-3">
-        <span className="text-xl shrink-0">
-          {TYPE_ICONS[notification.type] ?? "🔔"}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-sm">{notification.title}</p>
-            {!notification.isRead && (
-              <span className="h-2 w-2 rounded-full bg-primary" />
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mt-0.5">{notification.message}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {new Date(notification.createdAt).toLocaleString("en-BD", {
-              day: "numeric", month: "long", year: "numeric",
-              hour: "2-digit", minute: "2-digit",
-            })}
-          </p>
-        </div>
-        {notification.link && (
-          <Link href={notification.link}>
-            <Button size="sm" variant="ghost">
-              View →
-            </Button>
-          </Link>
-        )}
-      </CardContent>
-    </Card>
   );
 }

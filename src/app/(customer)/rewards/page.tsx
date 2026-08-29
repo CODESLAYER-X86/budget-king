@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { safeQuery } from "@/lib/safe-query";
 import { RewardsClient } from "./rewards-client";
 
 export const dynamic = "force-dynamic";
@@ -9,29 +10,42 @@ export default async function RewardsPage() {
   const session = await getSession();
   if (!session?.profile) redirect("/login?next=/rewards");
 
+  // All queries protected — if DB fails (pool exhausted), show defaults instead of 500
   const [balanceResult, transactions, vouchers, availableVouchers] = await Promise.all([
-    db.coinTransaction.aggregate({
-      where: { userId: session.id },
-      _sum: { amount: true },
-    }),
-    db.coinTransaction.findMany({
-      where: { userId: session.id },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-      include: {
-        order: { select: { orderNumber: true } },
-        voucher: { select: { code: true, voucher: { select: { name: true } } } },
-      },
-    }),
-    db.customerVoucher.findMany({
-      where: { userId: session.id },
-      include: { voucher: true, order: { select: { orderNumber: true } } },
-      orderBy: { redeemedAt: "desc" },
-    }),
-    db.voucher.findMany({
-      where: { isActive: true },
-      orderBy: { coinCost: "asc" },
-    }),
+    safeQuery(
+      () => db.coinTransaction.aggregate({
+        where: { userId: session.id },
+        _sum: { amount: true },
+      }),
+      { _sum: { amount: 0 } }
+    ),
+    safeQuery(
+      () => db.coinTransaction.findMany({
+        where: { userId: session.id },
+        orderBy: { createdAt: "desc" },
+        take: 30,
+        include: {
+          order: { select: { orderNumber: true } },
+          voucher: { select: { code: true, voucher: { select: { name: true } } } },
+        },
+      }),
+      []
+    ),
+    safeQuery(
+      () => db.customerVoucher.findMany({
+        where: { userId: session.id },
+        include: { voucher: true, order: { select: { orderNumber: true } } },
+        orderBy: { redeemedAt: "desc" },
+      }),
+      []
+    ),
+    safeQuery(
+      () => db.voucher.findMany({
+        where: { isActive: true },
+        orderBy: { coinCost: "asc" },
+      }),
+      []
+    ),
   ]);
 
   const balance = balanceResult._sum.amount ?? 0;
