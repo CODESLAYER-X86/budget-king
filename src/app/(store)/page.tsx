@@ -15,7 +15,7 @@ async function getHomeData() {
   const [featured, categories] = await Promise.all([
     safeQuery(
       () => db.product.findMany({
-        where: { isFeatured: true, status: "ACTIVE" },
+        where: { isFeatured: true, status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
         include: {
           images: { orderBy: { sortOrder: "asc" }, take: 1 },
           variants: {

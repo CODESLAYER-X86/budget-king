@@ -99,7 +99,7 @@ export default async function ProductPage({
     where: {
       categoryId: product.categoryId,
       id: { not: product.id },
-      status: "ACTIVE",
+      status: { in: ["ACTIVE", "OUT_OF_STOCK"] },
     },
     include: {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },

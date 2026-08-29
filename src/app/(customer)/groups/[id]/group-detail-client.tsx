@@ -424,57 +424,11 @@ export function GroupDetailClient({
         <TabsContent value="members" className="space-y-3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
+              <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
                 <span>Members ({group.members.length}/{group.maxMembers})</span>
                 {isOwner && group.status === "ACTIVE" && (
-                  <>
-                    <Button size="sm" variant="outline" onClick={handleClose} disabled={pending}>
-                      Close Group
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={pending}
-                      onClick={() => {
-                        const memberId = prompt("Enter the member ID to transfer ownership to:");
-                        if (!memberId) return;
-                        startTransition(async () => {
-                          const result = await transferGroupOwnershipAction(group.id, memberId);
-                          if (!result.ok) {
-                            toast({ title: "Failed", description: result.error, variant: "destructive" });
-                            return;
-                          }
-                          toast({ title: "Ownership transferred!" });
-                          router.push("/groups");
-                          router.refresh();
-                        });
-                      }}
-                    >
-                      Transfer Ownership
-                    </Button>
-                  </>
-                )}
-                {isOwner && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    disabled={pending}
-                    onClick={() => {
-                      if (!confirm("DELETE this group permanently? All members, products, and cart will be removed.")) return;
-                      startTransition(async () => {
-                        const result = await deleteGroupAction(group.id);
-                        if (!result.ok) {
-                          toast({ title: "Failed", description: result.error, variant: "destructive" });
-                          return;
-                        }
-                        toast({ title: "Group deleted" });
-                        router.push("/groups");
-                        router.refresh();
-                      });
-                    }}
-                  >
-                    Delete Group
+                  <Button size="sm" variant="outline" onClick={handleClose} disabled={pending}>
+                    Close Group
                   </Button>
                 )}
               </CardTitle>
@@ -495,14 +449,62 @@ export function GroupDetailClient({
                         Joined {new Date(m.joinedAt).toLocaleDateString("en-BD")}
                       </p>
                     </div>
-                    <Badge variant={m.role === "OWNER" ? "default" : "secondary"}>
-                      {m.role}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={m.role === "OWNER" ? "default" : "secondary"}>
+                        {m.role}
+                      </Badge>
+                      {isOwner && m.role !== "OWNER" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          disabled={pending}
+                          onClick={() => {
+                            if (!confirm(`Transfer ownership to ${m.name}? You will become a regular member.`)) return;
+                            startTransition(async () => {
+                              const result = await transferGroupOwnershipAction(group.id, m.userId);
+                              if (!result.ok) {
+                                toast({ title: "Failed", description: result.error, variant: "destructive" });
+                                return;
+                              }
+                              toast({ title: "Ownership transferred!" });
+                              router.push("/groups");
+                              router.refresh();
+                            });
+                          }}
+                        >
+                          Make Owner
+                        </Button>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
             </CardContent>
           </Card>
+
+          {isOwner && (
+            <Button
+              variant="ghost"
+              className="text-destructive"
+              disabled={pending}
+              onClick={() => {
+                if (!confirm("DELETE this group permanently? All members, products, and cart will be removed.")) return;
+                startTransition(async () => {
+                  const result = await deleteGroupAction(group.id);
+                  if (!result.ok) {
+                    toast({ title: "Failed", description: result.error, variant: "destructive" });
+                    return;
+                  }
+                  toast({ title: "Group deleted" });
+                  router.push("/groups");
+                  router.refresh();
+                });
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Delete Group Permanently
+            </Button>
+          )}
         </TabsContent>
       </Tabs>
     </div>

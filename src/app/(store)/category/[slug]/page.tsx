@@ -23,7 +23,7 @@ export default async function CategoryPage({
 
   const products = await db.product.findMany({
     where: {
-      status: "ACTIVE",
+      status: { in: ["ACTIVE", "OUT_OF_STOCK"] },
       OR: [
         { categoryId: category.id },
         { category: { parentId: category.id } },

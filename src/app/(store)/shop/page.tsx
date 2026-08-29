@@ -8,11 +8,11 @@ export default async function ShopPage() {
   // Fetch ALL active products in ONE query (cached for 5 min)
   const [products, categories] = await Promise.all([
     db.product.findMany({
-      where: { status: "ACTIVE" },
+      where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
       include: {
         images: { orderBy: { sortOrder: "asc" }, take: 1 },
         variants: {
-          where: { status: "ACTIVE" },
+          where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
           select: {
             price: true,
             compareAtPrice: true,

@@ -24,7 +24,7 @@ export default async function OffersPage() {
     include: {
       images: { orderBy: { sortOrder: "asc" }, take: 1 },
       variants: {
-        where: { status: "ACTIVE", compareAtPrice: { not: null } },
+        where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] }, compareAtPrice: { not: null } },
         select: {
           price: true,
           compareAtPrice: true,
