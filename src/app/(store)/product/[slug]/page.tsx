@@ -11,46 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await db.product.findUnique({
-    where: { slug },
-    select: { name: true, shortDescription: true, description: true, basePrice: true, brand: true, images: true },
-  });
-  if (!product) return { title: "Product not found — Budget King BD" };
-
-  const image = product.images[0]?.imageUrl;
-  const description = product.shortDescription ?? product.description ?? "Available at Budget King BD with Cash on Delivery";
-
-  return {
-    title: `${product.name} — Budget King BD`,
-    description: description.slice(0, 160),
-    openGraph: {
-      title: product.name,
-      description: description.slice(0, 160),
-      images: image ? [{ url: image, width: 600, height: 800, alt: product.name }] : undefined,
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: product.name,
-      description: description.slice(0, 160),
-      images: image ? [image] : undefined,
-    },
-  };
-}
-
+// Cache product data in module scope so generateMetadata and the page
+// share ONE database query instead of making two separate calls
 async function getProduct(slug: string) {
   const product = await db.product.findUnique({
     where: { slug },
     include: {
-      category: true,
       images: { orderBy: { sortOrder: "asc" } },
       variants: {
         where: { status: "ACTIVE" },
@@ -81,6 +49,36 @@ async function getProduct(slug: string) {
       compareAtPrice: v.compareAtPrice ? Number(v.compareAtPrice) : null,
       options: v.options as { color?: string; size?: string },
     })),
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
+  if (!product) return { title: "Product not found — Budget King BD" };
+
+  const image = product.images[0]?.imageUrl;
+  const description = product.shortDescription ?? product.description ?? "Available at Budget King BD with Cash on Delivery";
+
+  return {
+    title: `${product.name} — Budget King BD`,
+    description: description.slice(0, 160),
+    openGraph: {
+      title: product.name,
+      description: description.slice(0, 160),
+      images: image ? [{ url: image, width: 600, height: 800, alt: product.name }] : undefined,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: description.slice(0, 160),
+      images: image ? [image] : undefined,
+    },
   };
 }
 
