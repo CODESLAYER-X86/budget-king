@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { AuthClient } from "./auth-client";
 
@@ -11,9 +11,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect(searchParams ? decodeURIComponent((await searchParams).next ?? "/account") : "/account");
+  const session = await getSession();
+  if (session?.profile) redirect(searchParams ? decodeURIComponent((await searchParams).next ?? "/account") : "/account");
 
   return (
     <div className="container mx-auto px-4 py-16">

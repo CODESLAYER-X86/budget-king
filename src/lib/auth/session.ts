@@ -16,9 +16,16 @@ export type SessionUser = {
 export async function getSession(): Promise<SessionUser | null> {
   try {
     const supabase = await createServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    
+    // 1. Fast, reliable local cryptographic JWT validation from cookies
+    const { data: { session } } = await supabase.auth.getSession();
+    let user = session?.user;
+
+    // 2. Fallback to network getUser() if local session was not parsed
+    if (!user) {
+      const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+      user = fetchedUser ?? undefined;
+    }
 
     if (!user) return null;
 

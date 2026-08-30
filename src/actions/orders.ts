@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db";
 import { z } from "zod";
-import { createServerClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth/session";
 import type { CheckoutResult } from "@/types/cart";
 import { headers } from "next/headers";
 
@@ -52,12 +52,11 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
   }
   const data = parsed.data;
 
-  // 2. Get session (lightweight — only if auth cookies exist)
+  // 2. Get session (lightweight — fast local JWT verification)
   let userId: string | null = null;
   try {
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    userId = user?.id ?? null;
+    const session = await getSession();
+    userId = session?.id ?? null;
   } catch {
     // Auth failed — treat as guest
   }

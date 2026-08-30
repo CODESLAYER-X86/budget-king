@@ -1,11 +1,10 @@
 import { db } from "@/lib/db";
 import { CheckoutClient } from "./checkout-client";
-import { createServerClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
-  // Lightweight session check — only calls Supabase if auth cookies exist
   let user: { fullName: string; phone: string; email: string } | null = null;
   let savedAddresses: Array<{
     id: string;
@@ -20,39 +19,31 @@ export default async function CheckoutPage() {
   }> = [];
 
   try {
-    const supabase = await createServerClient();
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const session = await getSession();
+    if (session?.profile) {
+      user = {
+        fullName: session.profile.fullName ?? "",
+        phone: session.profile.phone ?? "",
+        email: session.profile.email,
+      };
 
-    if (authUser) {
-      const profile = await db.profile.findUnique({
-        where: { id: authUser.id },
-        select: { fullName: true, phone: true, email: true },
+      const addresses = await db.address.findMany({
+        where: { userId: session.id },
+        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+        take: 5,
       });
 
-      if (profile) {
-        user = {
-          fullName: profile.fullName ?? "",
-          phone: profile.phone ?? "",
-          email: profile.email,
-        };
-
-        const addresses = await db.address.findMany({
-          where: { userId: authUser.id },
-          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-          take: 5,
-        });
-        savedAddresses = addresses.map((a) => ({
-          id: a.id,
-          label: a.label,
-          fullName: a.fullName,
-          phone: a.phone,
-          division: a.division,
-          district: a.district,
-          area: a.area ?? "",
-          addressLine: a.addressLine,
-          isDefault: a.isDefault,
-        }));
-      }
+      savedAddresses = addresses.map((a) => ({
+        id: a.id,
+        label: a.label,
+        fullName: a.fullName,
+        phone: a.phone,
+        division: a.division,
+        district: a.district,
+        area: a.area ?? "",
+        addressLine: a.addressLine,
+        isDefault: a.isDefault,
+      }));
     }
   } catch {
     // If auth/DB fails, just show guest checkout
