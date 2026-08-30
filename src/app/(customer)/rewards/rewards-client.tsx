@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Coins, Ticket, History, Copy, Check, Loader2, Gift } from "lucide-react";
+import { Coins, Tag, History, Copy, Check, ShoppingBag, ArrowRight, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { redeemVoucherAction } from "@/actions/rewards";
 import { formatTk } from "@/lib/utils/currency";
 import {
   Table,
@@ -17,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { RewardSettingData } from "@/actions/rewards";
 
 type Transaction = {
   id: string;
@@ -26,308 +26,282 @@ type Transaction = {
   note: string | null;
   createdAt: string;
   orderNumber: string | null;
-  voucherCode: string | null;
-  voucherName: string | null;
 };
 
-type MyVoucher = {
+type ActiveCoupon = {
   id: string;
   code: string;
-  status: string;
-  redeemedAt: string;
-  expiresAt: string;
-  usedOnOrderNumber: string | null;
-  voucher: {
-    name: string;
-    type: "FIXED_AMOUNT" | "PERCENTAGE";
-    value: number;
-    minOrderValue: number;
-  };
-};
-
-type AvailableVoucher = {
-  id: string;
-  name: string;
+  description: string | null;
   type: "FIXED_AMOUNT" | "PERCENTAGE";
   value: number;
-  coinCost: number;
+  maxDiscount: number | null;
   minOrderValue: number;
-  validDays: number;
+  expiresAt: string | null;
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  EARNED: "Earned",
-  EARNED_REVERSAL: "Reversed",
-  REDEEMED: "Spent on voucher",
-  REDEEMED_REVERSAL: "Refunded",
+  EARNED: "Earned on Order",
+  EARNED_REVERSAL: "Order Reversed",
+  REDEEMED: "Redeemed at Checkout",
+  REDEEMED_REVERSAL: "Refunded to Wallet",
   EXPIRED: "Expired",
-  ADMIN_ADJUSTMENT: "Admin adjustment",
-  REFERRAL_BONUS: "Referral bonus",
+  ADMIN_ADJUSTMENT: "Admin Adjustment",
+  REFERRAL_BONUS: "Referral Bonus",
 };
-
-import type { RewardSettingData } from "@/actions/rewards";
 
 export function RewardsClient({
   balance,
   transactions,
-  myVouchers,
-  availableVouchers,
+  activeCoupons,
   rewardSettings,
 }: {
   balance: number;
   transactions: Transaction[];
-  myVouchers: MyVoucher[];
-  availableVouchers: AvailableVoucher[];
+  activeCoupons: ActiveCoupon[];
   rewardSettings?: RewardSettingData;
 }) {
-  const router = useRouter();
   const { toast } = useToast();
-  const [pending, startTransition] = useTransition();
-  const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const coinsPerTk = rewardSettings?.coinsPerTk ?? 10;
+  const maxPercent = rewardSettings?.maxRedemptionPercent ?? 20;
   const cashValue = Math.floor(balance / (coinsPerTk || 10));
 
-  async function handleRedeem(voucher: AvailableVoucher) {
-    if (balance < voucher.coinCost) {
-      toast({
-        title: "Not enough coins",
-        description: `You need ${voucher.coinCost - balance} more coins to redeem this voucher.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!confirm(`Redeem ${voucher.coinCost} coins for "${voucher.name}"?`)) return;
-
-    setRedeemingId(voucher.id);
-    startTransition(async () => {
-      const result = await redeemVoucherAction({ voucherId: voucher.id });
-      setRedeemingId(null);
-      if (!result.ok) {
-        toast({ title: "Failed", description: result.error, variant: "destructive" });
-        return;
-      }
-      toast({
-        title: "Voucher redeemed!",
-        description: `Code: ${result.voucherCode} — find it under "My Vouchers"`,
-      });
-      router.refresh();
-    });
-  }
-
-  function copyCode(code: string) {
+  function handleCopy(code: string) {
     navigator.clipboard?.writeText(code);
     setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+    toast({
+      title: `Code "${code}" Copied!`,
+      description: "Paste it into the promo code box at checkout.",
+    });
+    setTimeout(() => setCopiedCode(null), 2500);
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-5xl mx-auto">
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">My Rewards</h1>
-        <p className="text-sm text-muted-foreground">
-          Earn Budget Coins on orders and spend them instantly at checkout or for vouchers.
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          Budget Coins & Rewards
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Earn Budget Coins automatically on every order and save instantly at checkout with 1 tap.
         </p>
       </div>
 
-      {/* Balance Hero Card */}
-      <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-amber-500/5 shadow-sm">
-        <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="rounded-2xl bg-amber-500/20 p-4 text-amber-600 dark:text-amber-400 shadow-inner">
-              <Coins className="h-10 w-10" />
+      {/* Hero Wallet Card */}
+      <Card className="rounded-3xl border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-card to-amber-500/5 shadow-md overflow-hidden">
+        <CardContent className="p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="rounded-2xl bg-amber-500/20 p-4 text-amber-600 dark:text-amber-400 shadow-inner shrink-0">
+                <Coins className="h-12 w-12" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  Your Coin Balance
+                </p>
+                <p className="text-4xl sm:text-5xl font-black text-foreground tracking-tight font-mono">
+                  {balance.toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Earn 1 coin for every ৳1 spent on delivered orders
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Your Coin Balance
+
+            {/* Direct Cash Value Card */}
+            <div className="rounded-2xl border border-amber-500/30 bg-background/80 p-4 sm:p-5 sm:text-right shadow-xs backdrop-blur-xs space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Instant Checkout Value</p>
+              <p className="text-2xl sm:text-3xl font-black text-green-600 dark:text-green-400">
+                ≈ {formatTk(cashValue)} Off
               </p>
-              <p className="text-4xl font-extrabold text-foreground tracking-tight font-mono">
-                {balance.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Earn 1 coin per ৳1 spent on delivered orders
+              <p className="text-[11px] text-muted-foreground font-medium">
+                Conversion Rate: <strong>{coinsPerTk} Coins = ৳1</strong>
               </p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-amber-500/20 bg-background/60 p-3.5 sm:text-right w-full sm:w-auto">
-            <p className="text-xs text-muted-foreground">Direct Checkout Value</p>
-            <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              ≈ {formatTk(cashValue)} Off
+          {/* 3-Step 1-Tap Redemption Guide */}
+          <div className="border-t border-amber-500/20 pt-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-foreground mb-3 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" /> How to Redeem Coins (1-Tap Direct Checkout)
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              Rate: {coinsPerTk} Coins = ৳1
-            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-xl border bg-background/60 p-3 flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                  1
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Add to Cart</p>
+                  <p className="text-[11px] text-muted-foreground">Shop your favorite shirts and products.</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-background/60 p-3 flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-600">
+                  2
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Check the Coin Box</p>
+                  <p className="text-[11px] text-muted-foreground">Toggle "Redeem Coins" at checkout (up to {maxPercent}% off).</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-background/60 p-3 flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-500/20 text-xs font-bold text-green-600">
+                  3
+                </span>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Instant Cash Discount</p>
+                  <p className="text-[11px] text-muted-foreground">Pay less cash when your order arrives via COD.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Available vouchers to redeem */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Gift className="h-4 w-4 text-primary" /> Redeem Your Coins
+      {/* Active Store Promo Codes & Coupons */}
+      <Card className="rounded-3xl border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Tag className="h-5 w-5 text-primary" /> Active Store Promo Codes
+            </span>
+            <Link href="/shop" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
+              Shop Now <ArrowRight className="h-3 w-3" />
+            </Link>
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Copy any promo code below and apply it at checkout for instant discounts.
+          </p>
         </CardHeader>
         <CardContent>
-          {availableVouchers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No vouchers available for redemption right now.
-            </p>
+          {activeCoupons.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-8 text-center">
+              <Tag className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm font-medium text-muted-foreground">
+                No public promo codes right now. Stay tuned for seasonal sales!
+              </p>
+            </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {availableVouchers.map((v) => {
-                const canAfford = balance >= v.coinCost;
-                return (
-                  <div
-                    key={v.id}
-                    className="rounded-lg border bg-card p-4 flex flex-col gap-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold">{v.name}</p>
-                      <Badge variant={canAfford ? "default" : "secondary"}>
-                        {v.type === "FIXED_AMOUNT" ? formatTk(v.value) : `${v.value}%`} off
+              {activeCoupons.map((coupon) => (
+                <div
+                  key={coupon.id}
+                  className="rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-secondary/30 p-4 flex flex-col justify-between gap-3 shadow-2xs hover:border-primary/40 transition-colors"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge className="bg-primary text-primary-foreground font-bold text-xs">
+                        {coupon.type === "FIXED_AMOUNT"
+                          ? `${formatTk(coupon.value)} OFF`
+                          : `${coupon.value}% OFF`}
                       </Badge>
+                      {coupon.maxDiscount && (
+                        <span className="text-[10px] text-muted-foreground">
+                          Max {formatTk(coupon.maxDiscount)}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Min order: tk {v.minOrderValue} • Valid {v.validDays} days after redemption
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-sm font-medium text-amber-600">
-                        {v.coinCost.toLocaleString()} coins
-                      </span>
-                      <Button
-                        size="sm"
-                        disabled={!canAfford || pending}
-                        onClick={() => handleRedeem(v)}
-                      >
-                        {redeemingId === v.id && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                        {canAfford ? "Redeem" : "Not enough"}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* My vouchers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Ticket className="h-4 w-4 text-primary" /> My Vouchers
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {myVouchers.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No vouchers yet. Redeem your coins above to get one.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {myVouchers.map((v) => {
-                const expired = v.expiresAt <= new Date().toISOString();
-                const isActive = v.status === "ACTIVE" && !expired;
-                return (
-                  <div
-                    key={v.id}
-                    className="rounded-md border p-3 flex items-center justify-between"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{v.voucher.name}</p>
-                        <Badge
-                          variant={
-                            isActive ? "default" :
-                            v.status === "USED" ? "secondary" :
-                            v.status === "REVOKED" ? "destructive" :
-                            "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {v.status === "ACTIVE" && expired ? "EXPIRED" : v.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {v.voucher.type === "FIXED_AMOUNT"
-                          ? `${formatTk(v.voucher.value)} off`
-                          : `${v.voucher.value}% off`}{" "}
-                        {v.voucher.minOrderValue > 0 && `• Min tk ${v.voucher.minOrderValue}`}
+                    <p className="font-bold text-sm text-foreground">
+                      {coupon.description || `Special ${coupon.code} Discount`}
+                    </p>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      {coupon.minOrderValue > 0
+                        ? `Min order ${formatTk(coupon.minOrderValue)}`
+                        : "No minimum purchase requirement"}
+                    </p>
+
+                    {coupon.expiresAt && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Valid until: {new Date(coupon.expiresAt).toLocaleDateString("en-BD", { day: "numeric", month: "short", year: "numeric" })}
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        Expires: {new Date(v.expiresAt).toLocaleDateString("en-BD")}
-                        {v.usedOnOrderNumber && ` • Used on order ${v.usedOnOrderNumber}`}
-                      </p>
-                    </div>
-                    {isActive && (
-                      <button
-                        onClick={() => copyCode(v.code)}
-                        className="font-mono text-sm font-semibold bg-secondary px-3 py-1.5 rounded-md hover:bg-accent flex items-center gap-1"
-                      >
-                        {v.code}
-                        {copiedCode === v.code ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </button>
                     )}
                   </div>
-                );
-              })}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                    <span className="font-mono text-xs font-bold text-foreground bg-secondary/80 px-2.5 py-1 rounded-lg">
+                      {coupon.code}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopy(coupon.code)}
+                      className="h-8 text-xs font-semibold rounded-xl active:scale-95 transition-transform"
+                    >
+                      {copiedCode === coupon.code ? (
+                        <>
+                          <Check className="mr-1.5 h-3.5 w-3.5 text-green-600" /> Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy Code
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Transaction history */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" /> Coin History
+      {/* Coin Transaction History */}
+      <Card className="rounded-3xl border shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" /> Coin Activity Log
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Complete record of your earned and redeemed Budget Coins.
+          </p>
         </CardHeader>
         <CardContent className="p-0">
           {transactions.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No coin transactions yet. Place an order and have it delivered to earn coins.
-            </p>
+            <div className="p-8 text-center">
+              <Coins className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No coin activity yet. Place your first order to start earning!
+              </p>
+            </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="hidden md:table-cell">Source</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Balance</TableHead>
+                  <TableHead className="w-[140px]">Date</TableHead>
+                  <TableHead>Activity</TableHead>
+                  <TableHead className="hidden md:table-cell">Details</TableHead>
+                  <TableHead className="text-right">Coins</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Balance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {transactions.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="text-xs text-muted-foreground">
+                  <TableRow key={t.id} className="hover:bg-muted/40">
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(t.createdAt).toLocaleString("en-BD", {
-                        day: "numeric", month: "short",
-                        hour: "2-digit", minute: "2-digit",
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
                       })}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs sm:text-sm font-medium">
                       {TYPE_LABELS[t.type] ?? t.type.replace(/_/g, " ")}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground hidden md:table-cell">
-                      {t.orderNumber && `Order ${t.orderNumber}`}
-                      {t.voucherCode && `Voucher ${t.voucherCode}`}
-                      {!t.orderNumber && !t.voucherCode && (t.note ?? "—")}
+                      {t.orderNumber ? `Order #${t.orderNumber}` : t.note ?? "—"}
                     </TableCell>
-                    <TableCell className={`text-right font-semibold text-sm ${t.amount >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    <TableCell className={`text-right font-bold text-xs sm:text-sm font-mono ${t.amount >= 0 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}`}>
                       {t.amount >= 0 ? "+" : ""}
                       {t.amount.toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right text-sm hidden md:table-cell">
+                    <TableCell className="text-right text-xs sm:text-sm font-mono text-muted-foreground hidden sm:table-cell">
                       {t.balanceAfter.toLocaleString()}
                     </TableCell>
                   </TableRow>

@@ -12,7 +12,7 @@ export default async function RewardsPage() {
   if (!session?.profile) redirect("/login?next=/rewards");
 
   // All queries protected — if DB fails (pool exhausted), show defaults instead of 500
-  const [balanceResult, transactions, vouchers, availableVouchers, rewardSettings] = await Promise.all([
+  const [balanceResult, transactions, activeCoupons, rewardSettings] = await Promise.all([
     safeQuery(
       () => db.coinTransaction.aggregate({
         where: { userId: session.id },
@@ -27,23 +27,14 @@ export default async function RewardsPage() {
         take: 30,
         include: {
           order: { select: { orderNumber: true } },
-          voucher: { select: { code: true, voucher: { select: { name: true } } } },
         },
       }),
       []
     ),
     safeQuery(
-      () => db.customerVoucher.findMany({
-        where: { userId: session.id },
-        include: { voucher: true, order: { select: { orderNumber: true } } },
-        orderBy: { redeemedAt: "desc" },
-      }),
-      []
-    ),
-    safeQuery(
-      () => db.voucher.findMany({
+      () => db.coupon.findMany({
         where: { isActive: true },
-        orderBy: { coinCost: "asc" },
+        orderBy: { createdAt: "desc" },
       }),
       []
     ),
@@ -65,31 +56,16 @@ export default async function RewardsPage() {
           note: t.note,
           createdAt: t.createdAt.toISOString(),
           orderNumber: t.order?.orderNumber ?? null,
-          voucherCode: t.voucher?.code ?? null,
-          voucherName: t.voucher?.voucher.name ?? null,
         }))}
-        myVouchers={vouchers.map((v) => ({
-          id: v.id,
-          code: v.code,
-          status: v.status,
-          redeemedAt: v.redeemedAt.toISOString(),
-          expiresAt: v.expiresAt.toISOString(),
-          usedOnOrderNumber: v.order?.orderNumber ?? null,
-          voucher: {
-            name: v.voucher.name,
-            type: v.voucher.type,
-            value: Number(v.voucher.value),
-            minOrderValue: Number(v.voucher.minOrderValue),
-          },
-        }))}
-        availableVouchers={availableVouchers.map((v) => ({
-          id: v.id,
-          name: v.name,
-          type: v.type,
-          value: Number(v.value),
-          coinCost: v.coinCost,
-          minOrderValue: Number(v.minOrderValue),
-          validDays: v.validDays,
+        activeCoupons={activeCoupons.map((c) => ({
+          id: c.id,
+          code: c.code,
+          description: c.description,
+          type: c.type,
+          value: Number(c.value),
+          maxDiscount: c.maxDiscount ? Number(c.maxDiscount) : null,
+          minOrderValue: Number(c.minOrderValue),
+          expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
         }))}
       />
     </div>
