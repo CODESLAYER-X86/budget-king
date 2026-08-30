@@ -43,13 +43,45 @@ export async function GET(request: NextRequest) {
   );
 
   try {
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-    if (exchangeError) {
-      console.error("Auth exchange error:", exchangeError.message);
+    const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError || !session?.user) {
+      console.error("Auth exchange error:", exchangeError?.message);
       const loginUrl = new URL("/login", requestUrl.origin);
       loginUrl.searchParams.set("next", next);
       loginUrl.searchParams.set("error", "auth_failed");
       return NextResponse.redirect(loginUrl);
+    }
+
+    const user = session.user;
+    const userEmail = (user.email ?? "").trim().toLowerCase();
+    const firstAdminEmail = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
+
+    // Ensure Profile exists in DB immediately upon OAuth callback
+    try {
+      const { db } = await import("@/lib/db");
+      const existing = await db.profile.findUnique({ where: { id: user.id } });
+      if (!existing) {
+        let shouldBeAdmin = false;
+        try {
+          const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
+          shouldBeAdmin = !!(firstAdminEmail && userEmail === firstAdminEmail && adminCount === 0);
+        } catch {}
+
+        await db.profile.create({
+          data: {
+            id: user.id,
+            email: user.email ?? "",
+            fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+            avatarUrl: user.user_metadata?.avatar_url ?? null,
+            role: shouldBeAdmin ? "ADMIN" : "CUSTOMER",
+            isStaff: shouldBeAdmin,
+            isSupremeAdmin: shouldBeAdmin,
+          },
+        });
+      }
+    } catch (dbErr) {
+      console.error("[OAuth Callback] DB upsert error:", dbErr);
+      // Non-fatal: user can still proceed
     }
   } catch (e) {
     console.error("Auth callback exception:", (e as Error).message);
