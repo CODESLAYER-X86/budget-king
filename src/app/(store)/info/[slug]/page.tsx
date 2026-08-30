@@ -114,7 +114,7 @@ export default async function InfoPage({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <StoreNavbar user={null} />
+      <StoreNavbar />
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="mx-auto max-w-2xl">
           <h1 className="mb-6 text-3xl font-bold tracking-tight">{page.title}</h1>
