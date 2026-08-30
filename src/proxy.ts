@@ -47,13 +47,18 @@ export async function proxy(request: NextRequest) {
           return allCookies;
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            // Ensure cookies are set with proper options for mobile browsers
+          // Step 1: Set all cookies on the request (for downstream server components)
+          cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
-            response = NextResponse.next({
-              request: { headers: request.headers },
-            });
-            // Set cookie with same options as Supabase provides + ensure path and sameSite
+          });
+
+          // Step 2: Create the response ONCE with all updated request headers
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          });
+
+          // Step 3: Set all cookies on the SINGLE response (for the browser)
+          cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, {
               ...options,
               path: "/",
