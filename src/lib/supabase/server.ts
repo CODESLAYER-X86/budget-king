@@ -17,30 +17,9 @@ export async function createServerClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
-          try {
-            // Detect if Supabase is attempting a FULL session wipe (e.g. spurious network error)
-            const authCookies = cookiesToSet.filter(c => c.name.includes("auth-token"));
-            const isFullClear = 
-              authCookies.length > 0 && 
-              authCookies.every(c => !c.value || c.options?.maxAge === 0);
-
-            if (isFullClear) {
-              console.warn("Blocked Supabase from automatically wiping the session cookies.");
-              return;
-            }
-
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, {
-                ...options,
-                path: "/",
-                sameSite: "lax",
-                secure: process.env.NODE_ENV === "production",
-              })
-            );
-          } catch {
-            // called from a Server Component — safe to ignore
-          }
+        setAll() {
+          // Read-only server client — matches Cyber Club pattern.
+          // Cookies are managed strictly at login (/auth/callback) and signout (/auth/signout).
         },
       },
     }
