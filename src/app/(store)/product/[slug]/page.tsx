@@ -341,7 +341,7 @@ export default async function ProductPage({
                 reviewCount: product.reviews.length,
               },
             }),
-          }),
+          }).replace(/</g, "\\u003c"),
         }}
       />
     </div>
