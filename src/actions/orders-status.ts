@@ -117,7 +117,7 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
             },
           });
         }
-        // Restore voucher if one was applied
+        // Restore customer voucher if one was applied
         if (order.appliedVoucherId) {
           await tx.customerVoucher.update({
             where: { id: order.appliedVoucherId },
@@ -125,6 +125,36 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
               status: "ACTIVE",
               usedOnOrderId: null,
               usedAt: null,
+            },
+          });
+        }
+
+        // Restore promo coupon if one was applied
+        if (order.appliedCouponId) {
+          await tx.coupon.update({
+            where: { id: order.appliedCouponId },
+            data: { usedCount: { decrement: 1 } },
+          });
+          await tx.couponUsage.deleteMany({
+            where: { orderId: order.id },
+          });
+        }
+
+        // Refund direct coins if spent at checkout
+        if (order.coinsRedeemed && order.coinsRedeemed > 0 && order.userId) {
+          const balResult = await tx.coinTransaction.aggregate({
+            where: { userId: order.userId },
+            _sum: { amount: true },
+          });
+          const currentBal = balResult._sum.amount ?? 0;
+          await tx.coinTransaction.create({
+            data: {
+              userId: order.userId,
+              type: "REDEEMED_REVERSAL",
+              amount: order.coinsRedeemed,
+              balanceAfter: currentBal + order.coinsRedeemed,
+              orderId: order.id,
+              note: `Refunded direct checkout coins from cancelled order ${order.orderNumber}`,
             },
           });
         }

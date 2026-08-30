@@ -1,11 +1,13 @@
 import { db } from "@/lib/db";
 import { CheckoutClient } from "./checkout-client";
 import { getSession } from "@/lib/auth/session";
+import { getCoinBalance } from "@/actions/rewards";
 
 export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
   let user: { fullName: string; phone: string; email: string } | null = null;
+  let coinBalance = 0;
   let savedAddresses: Array<{
     id: string;
     label: string | null;
@@ -27,12 +29,16 @@ export default async function CheckoutPage() {
         email: session.profile.email,
       };
 
-      const addresses = await db.address.findMany({
-        where: { userId: session.id },
-        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-        take: 5,
-      });
+      const [addresses, balance] = await Promise.all([
+        db.address.findMany({
+          where: { userId: session.id },
+          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+          take: 5,
+        }),
+        getCoinBalance(session.id).catch(() => 0),
+      ]);
 
+      coinBalance = balance;
       savedAddresses = addresses.map((a) => ({
         id: a.id,
         label: a.label,
@@ -50,7 +56,15 @@ export default async function CheckoutPage() {
   }
 
   // Fetch delivery zones (required for checkout)
-  let deliveryZones = [];
+  let deliveryZones: Array<{
+    id: string;
+    name: string;
+    charge: any;
+    estimatedDays: number;
+    divisions: string[];
+    isActive: boolean;
+  }> = [];
+
   try {
     deliveryZones = await db.deliveryZone.findMany({
       where: { isActive: true },
@@ -82,6 +96,7 @@ export default async function CheckoutPage() {
       }))}
       addresses={savedAddresses}
       user={user}
+      coinBalance={coinBalance}
     />
   );
 }

@@ -22,6 +22,7 @@ import {
   Megaphone,
   Gift,
   UserCog,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ const allNav: NavItem[] = [
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/delivery-zones", label: "Delivery Zones", icon: Truck },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
+  { href: "/admin/coupons", label: "Promo Codes", icon: Tag, adminOnly: true },
   { href: "/admin/groups", label: "Groups", icon: UsersRound },
   { href: "/admin/rewards", label: "Rewards Config", icon: Coins, adminOnly: true },
   { href: "/admin/blog", label: "Blog", icon: FileText },

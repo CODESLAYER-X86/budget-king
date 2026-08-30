@@ -132,6 +132,7 @@ model Profile {
   cartItems        CartItem[]
   coinTransactions CoinTransaction[]
   vouchers         CustomerVoucher[]
+  couponUsages     CouponUsage[]
 
   // Group relations
   ownedGroups      Group[]          @relation("GroupOwner")
@@ -397,6 +398,14 @@ model Order {
   // Voucher applied at checkout (Phase 5)
   appliedVoucherId String? @unique
 
+  // Promo Coupon applied at checkout (e.g. EID50)
+  appliedCouponId  String?
+  couponDiscount   Decimal      @db.Decimal(10, 2) @default(0)
+
+  // Direct coins redeemed at checkout (e.g. 500 coins = ৳50 off)
+  coinDiscount     Decimal      @db.Decimal(10, 2) @default(0)
+  coinsRedeemed    Int          @default(0)
+
   // Group order (Phase 6) — set when this order is a group checkout
   groupOrderId String?
 
@@ -418,6 +427,8 @@ model Order {
   statusHistory  OrderStatusHistory[]
   coinTransactions CoinTransaction[]
   appliedVoucher CustomerVoucher? @relation
+  coupon         Coupon?          @relation(fields: [appliedCouponId], references: [id])
+  couponUsage    CouponUsage?
   group          Group?          @relation("GroupOrders", fields: [groupOrderId], references: [id])
 
   @@index([status])
@@ -627,6 +638,54 @@ model CustomerVoucher {
 
   @@index([userId, status])
   @@map("customer_vouchers")
+}
+
+// ============================================================
+// PROMO CODES / COUPONS (Admin configured, e.g. EID50)
+// ============================================================
+
+enum CouponType {
+  FIXED_AMOUNT // e.g. ৳50 off
+  PERCENTAGE   // e.g. 50% off
+}
+
+model Coupon {
+  id              String       @id @default(cuid())
+  code            String       @unique // e.g. "EID50"
+  description     String?      // e.g. "Eid Special 50% Discount"
+  type            CouponType
+  value           Decimal      @db.Decimal(10, 2)
+  maxDiscount     Decimal?     @db.Decimal(10, 2) // Cap for percentage codes (e.g. max ৳200)
+  minOrderValue   Decimal      @db.Decimal(10, 2) @default(0)
+  totalUsageLimit Int?         // Max redemptions storewide (null = unlimited)
+  perUserLimit    Int          @default(1) // Max uses per customer
+  usedCount       Int          @default(0)
+  startDate       DateTime     @default(now())
+  expiresAt       DateTime?
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  orders          Order[]
+  usages          CouponUsage[]
+
+  @@map("coupons")
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String?
+  orderId   String   @unique
+  discount  Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user      Profile? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, userId])
+  @@map("coupon_usages")
 }
 // ============================================================
 // GROUPS — Group Shopping (Phase 6)

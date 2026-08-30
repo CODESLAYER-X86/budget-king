@@ -27,7 +27,8 @@ const CheckoutSchema = z.object({
   }),
   deliveryZoneId: z.string().min(1),
   notes: z.string().max(1000).optional(),
-  voucherCode: z.string().max(20).optional(),
+  voucherCode: z.string().max(30).optional(),
+  redeemCoins: z.boolean().optional(),
   lines: z.array(LineSchema).min(1, "Cart is empty"),
 });
 
@@ -58,20 +59,24 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
     const session = await getSession();
     userId = session?.id ?? null;
   } catch {
-    // Auth failed — treat as guest
+    // Guest checkout
   }
 
   // 3. Single atomic transaction — with extended timeout for serverless
   try {
     const result = await db.$transaction(async (tx) => {
-      // 3a. Fetch delivery zone + variants in parallel
+      // 3a. Parallel pre-flight: fetch zone + variants in parallel
       const [zone, variants] = await Promise.all([
         tx.deliveryZone.findUnique({ where: { id: data.deliveryZoneId } }),
         tx.productVariant.findMany({
-          where: { id: { in: data.lines.map((l) => l.variantId) }, status: "ACTIVE" },
+          where: { id: { in: data.lines.map((l) => l.variantId) } },
           include: {
             product: {
-              select: { name: true, status: true, images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } } },
+              select: {
+                name: true,
+                status: true,
+                images: { where: { isPrimary: true }, take: 1, select: { imageUrl: true } },
+              },
             },
             inventory: { select: { id: true, quantity: true, reserved: true } },
           },
@@ -110,7 +115,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
       const nextSeq = lastOrder ? parseInt(lastOrder.orderNumber.split("-")[2], 10) + 1 : 1;
       const orderNumber = `${prefix}${String(nextSeq).padStart(6, "0")}`;
 
-      // 3d. Calculate totals and process voucher
+      // 3d. Calculate subtotal
       let subtotal = 0;
       const orderItemsData = data.lines.map((line) => {
         const variant = variants.find((v) => v.id === line.variantId)!;
@@ -131,40 +136,108 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         };
       });
 
+      // 3e. Process Promo Coupon or Customer Voucher
       let appliedVoucherId: string | null = null;
-      let discount = 0;
+      let appliedCouponId: string | null = null;
+      let couponDiscount = 0;
 
       if (data.voucherCode && data.voucherCode.trim()) {
-        if (!userId) {
-          throw new Error("Please sign in to apply vouchers");
-        }
         const normalizedCode = data.voucherCode.toUpperCase().trim();
-        const cv = await tx.customerVoucher.findUnique({
+        const now = new Date();
+
+        // Check Promo Code (Coupon e.g. EID50)
+        const coupon = await tx.coupon.findUnique({
           where: { code: normalizedCode },
-          include: { voucher: true },
         });
 
-        if (!cv) throw new Error("Invalid voucher code");
-        if (cv.userId !== userId) throw new Error("This voucher does not belong to your account");
-        if (cv.status !== "ACTIVE") throw new Error(`Voucher is ${cv.status.toLowerCase()}`);
-        if (cv.expiresAt <= new Date()) throw new Error("Voucher has expired");
-        if (subtotal < Number(cv.voucher.minOrderValue)) {
-          throw new Error(`Minimum order of ৳${Number(cv.voucher.minOrderValue)} required for this voucher`);
-        }
+        if (coupon) {
+          if (!coupon.isActive) throw new Error("This promo code is no longer active");
+          if (coupon.startDate && coupon.startDate > now) throw new Error("This promo code is not active yet");
+          if (coupon.expiresAt && coupon.expiresAt <= now) throw new Error("This promo code has expired");
+          if (coupon.totalUsageLimit !== null && coupon.usedCount >= coupon.totalUsageLimit) {
+            throw new Error("This promo code has reached its usage limit");
+          }
+          if (subtotal < Number(coupon.minOrderValue)) {
+            throw new Error(`Minimum order of ৳${Number(coupon.minOrderValue)} required for code ${coupon.code}`);
+          }
 
-        if (cv.voucher.type === "FIXED_AMOUNT") {
-          discount = Number(cv.voucher.value);
+          if (userId) {
+            const userUsages = await tx.couponUsage.count({
+              where: { couponId: coupon.id, userId },
+            });
+            if (userUsages >= coupon.perUserLimit) {
+              throw new Error(`You have already used code "${coupon.code}" (${coupon.perUserLimit} use limit per customer)`);
+            }
+          }
+
+          if (coupon.type === "FIXED_AMOUNT") {
+            couponDiscount = Number(coupon.value);
+          } else {
+            couponDiscount = Math.round((subtotal * Number(coupon.value)) / 100);
+            if (coupon.maxDiscount) {
+              couponDiscount = Math.min(couponDiscount, Number(coupon.maxDiscount));
+            }
+          }
+          couponDiscount = Math.min(couponDiscount, subtotal);
+          appliedCouponId = coupon.id;
         } else {
-          discount = Math.round((subtotal * Number(cv.voucher.value)) / 100);
+          // Check Personal Customer Voucher (e.g. BKVC-XXXXX)
+          if (!userId) {
+            throw new Error("Please sign in to use your personal rewards voucher");
+          }
+
+          const cv = await tx.customerVoucher.findUnique({
+            where: { code: normalizedCode },
+            include: { voucher: true },
+          });
+
+          if (!cv) throw new Error("Invalid promo code or voucher");
+          if (cv.userId !== userId) throw new Error("This voucher does not belong to your account");
+          if (cv.status !== "ACTIVE") throw new Error(`Voucher is ${cv.status.toLowerCase()}`);
+          if (cv.expiresAt <= now) throw new Error("Voucher has expired");
+          if (subtotal < Number(cv.voucher.minOrderValue)) {
+            throw new Error(`Minimum order of ৳${Number(cv.voucher.minOrderValue)} required for this voucher`);
+          }
+
+          if (cv.voucher.type === "FIXED_AMOUNT") {
+            couponDiscount = Number(cv.voucher.value);
+          } else {
+            couponDiscount = Math.round((subtotal * Number(cv.voucher.value)) / 100);
+          }
+          couponDiscount = Math.min(couponDiscount, subtotal);
+          appliedVoucherId = cv.id;
         }
-        discount = Math.min(discount, subtotal);
-        appliedVoucherId = cv.id;
       }
 
-      const deliveryCharge = Number(zone.charge);
-      const total = Math.max(0, subtotal - discount + deliveryCharge);
+      // 3f. Process Direct Coin Redemption (10 Coins = ৳1)
+      let coinDiscount = 0;
+      let coinsRedeemed = 0;
 
-      // 3e. Create order + items + status history + audit log in ONE create
+      if (data.redeemCoins && userId) {
+        const coinBalanceResult = await tx.coinTransaction.aggregate({
+          where: { userId },
+          _sum: { amount: true },
+        });
+        const currentCoinBalance = coinBalanceResult._sum.amount ?? 0;
+
+        if (currentCoinBalance >= 10) {
+          const remainingSubtotal = Math.max(0, subtotal - couponDiscount);
+          // Max coin discount: up to 20% of subtotal (or at least remaining subtotal up to ৳50)
+          const maxAllowedTk = Math.min(
+            remainingSubtotal,
+            Math.max(50, Math.floor(remainingSubtotal * 0.20))
+          );
+          const maxCoinsAffordable = Math.floor(currentCoinBalance / 10);
+          coinDiscount = Math.min(maxAllowedTk, maxCoinsAffordable);
+          coinsRedeemed = coinDiscount * 10;
+        }
+      }
+
+      const totalDiscount = couponDiscount + coinDiscount;
+      const deliveryCharge = Number(zone.charge);
+      const total = Math.max(0, subtotal - totalDiscount + deliveryCharge);
+
+      // 3g. Create order
       const order = await tx.order.create({
         data: {
           orderNumber,
@@ -185,9 +258,12 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           deliveryZoneId: zone.id,
           deliveryCharge: zone.charge,
           subtotal,
-          discount,
-          total,
+          discount: totalDiscount,
+          couponDiscount,
+          coinDiscount,
+          coinsRedeemed,
           appliedVoucherId,
+          appliedCouponId,
           notes: data.notes ?? null,
           items: { create: orderItemsData },
           statusHistory: {
@@ -196,7 +272,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         },
       });
 
-      // 3f. Mark voucher as USED
+      // 3h. Record Coupon / Voucher / Coin usage
       if (appliedVoucherId) {
         await tx.customerVoucher.update({
           where: { id: appliedVoucherId },
@@ -208,7 +284,40 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         });
       }
 
-      // 3f. Reserve stock — batch (no movements, just increment reserved)
+      if (appliedCouponId) {
+        await tx.coupon.update({
+          where: { id: appliedCouponId },
+          data: { usedCount: { increment: 1 } },
+        });
+        await tx.couponUsage.create({
+          data: {
+            couponId: appliedCouponId,
+            userId,
+            orderId: order.id,
+            discount: couponDiscount,
+          },
+        });
+      }
+
+      if (coinsRedeemed > 0 && userId) {
+        const balResult = await tx.coinTransaction.aggregate({
+          where: { userId },
+          _sum: { amount: true },
+        });
+        const currentBal = balResult._sum.amount ?? 0;
+        await tx.coinTransaction.create({
+          data: {
+            userId,
+            type: "REDEEMED",
+            amount: -coinsRedeemed,
+            balanceAfter: currentBal - coinsRedeemed,
+            orderId: order.id,
+            note: `Direct checkout discount: ${coinsRedeemed} coins for ৳${coinDiscount} off on order ${orderNumber}`,
+          },
+        });
+      }
+
+      // 3i. Reserve stock
       for (const line of data.lines) {
         const variant = variants.find((v) => v.id === line.variantId)!;
         if (!variant.inventory) continue;
