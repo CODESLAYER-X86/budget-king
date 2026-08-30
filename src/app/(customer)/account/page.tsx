@@ -41,56 +41,95 @@ export default async function AccountPage() {
     .filter((o) => o.status === "DELIVERED")
     .reduce((sum, o) => sum + Number(o.total), 0);
 
+  const userName = session.profile.fullName ?? session.email.split("@")[0];
+  const userInitials = userName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase() || "BK";
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back, {session.profile.fullName ?? session.email.split("@")[0]} 👋
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your orders, profile, and rewards.
-          </p>
+    <div className="container mx-auto px-4 py-6 max-w-5xl space-y-6">
+      {/* Modern Profile Header Card */}
+      <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {/* Avatar Initials */}
+            <div className="relative flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-amber-600 text-primary-foreground font-bold text-lg sm:text-xl shadow-md shadow-primary/20">
+              {userInitials}
+              <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-background ring-2 ring-background">
+                <Crown className="h-3 w-3 text-amber-500 fill-amber-500" />
+              </span>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+                  {userName}
+                </h1>
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30 font-semibold">
+                  Member
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {session.email}
+              </p>
+            </div>
+          </div>
+
+          {/* Styled Sign Out Button */}
+          <a
+            href="/auth/signout"
+            className="inline-flex items-center justify-center gap-2 self-start sm:self-auto rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2 text-xs font-semibold text-destructive hover:bg-destructive/20 active:scale-95 transition-all shadow-xs"
+          >
+            <LogOut className="h-3.5 w-3.5" /> Sign out
+          </a>
         </div>
-        <a
-          href="/auth/signout"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-destructive"
-        >
-          <LogOut className="h-4 w-4" /> Sign out
-        </a>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2.5">
-              <Package className="h-5 w-5 text-primary" />
+      {/* Modern Stat Grid */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+        <Link href="/orders" className="block group">
+          <Card className="rounded-2xl transition-all hover:border-primary/40 hover:shadow-sm active:scale-[0.99]">
+            <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent Orders</p>
+                <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{orders.length}</p>
+                <p className="text-[11px] text-primary group-hover:underline">View history →</p>
+              </div>
+              <div className="rounded-xl bg-primary/10 p-3 text-primary">
+                <Package className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/rewards" className="block group">
+          <Card className="rounded-2xl border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card transition-all hover:border-amber-500/60 hover:shadow-sm active:scale-[0.99]">
+            <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">Budget Coins</p>
+                <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground font-mono">{coinBalance.toLocaleString()}</p>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium group-hover:underline">Redeem at checkout →</p>
+              </div>
+              <div className="rounded-xl bg-amber-500/20 p-3 text-amber-600 dark:text-amber-400">
+                <Coins className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Card className="rounded-2xl">
+          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Spent</p>
+              <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{formatTk(totalSpent)}</p>
+              <p className="text-[11px] text-muted-foreground">On delivered orders</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{orders.length}</p>
-              <p className="text-xs text-muted-foreground">Recent Orders</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2.5">
-              <Coins className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{coinBalance.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Budget Coins</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2.5">
-              <Crown className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{formatTk(totalSpent)}</p>
-              <p className="text-xs text-muted-foreground">Total Spent</p>
+            <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-400">
+              <Crown className="h-6 w-6" />
             </div>
           </CardContent>
         </Card>

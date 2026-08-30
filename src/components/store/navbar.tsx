@@ -10,6 +10,14 @@ import {
   Menu,
   X,
   Package,
+  Home,
+  Users,
+  BookOpen,
+  Truck,
+  Coins,
+  MapPin,
+  LogOut,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,13 +34,22 @@ import { CartDrawer } from "@/components/store/cart-drawer";
 import { useRouter } from "next/navigation";
 import { useAuthUser } from "@/lib/auth/use-auth-user";
 
-const navLinks = [
+// Desktop top nav (includes Shop and Offers)
+const desktopNavLinks = [
   { href: "/", label: "Home" },
   { href: "/shop", label: "Shop" },
   { href: "/offers", label: "Offers" },
   { href: "/groups", label: "Groups" },
   { href: "/blog", label: "Blog" },
   { href: "/track", label: "Track Order" },
+];
+
+// Mobile drawer nav (Per user request: Shop and Offers omitted as they are in the bottom bar)
+const mobileNavLinks = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/groups", label: "Groups", icon: Users },
+  { href: "/blog", label: "Blog", icon: BookOpen },
+  { href: "/track", label: "Track Order", icon: Truck },
 ];
 
 export function StoreNavbar() {
@@ -65,98 +82,160 @@ export function StoreNavbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="md:hidden active:scale-90 transition-transform"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-primary" />
-                Budget King BD
-              </SheetTitle>
-            </SheetHeader>
-            <nav className="mt-6 flex flex-col gap-1">
-              {navLinks.map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`rounded-md px-3 py-2 text-sm font-medium hover:bg-accent ${
-                    pathname === l.href ? "bg-accent" : ""
-                  }`}
-                >
-                  {l.label}
-                </Link>
-              ))}
-              <form onSubmit={onSearch} className="mt-2 px-3">
+          <SheetContent side="left" className="w-[300px] p-0 flex flex-col justify-between">
+            <div className="overflow-y-auto p-5 space-y-5">
+              <SheetHeader className="text-left border-b pb-4">
+                <SheetTitle className="flex items-center gap-2 text-lg font-bold">
+                  <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
+                    <Crown className="h-5 w-5" />
+                  </div>
+                  <span>Budget King BD</span>
+                </SheetTitle>
+              </SheetHeader>
+
+              {/* Search Bar */}
+              <form onSubmit={onSearch} className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search products"
-                  className="w-full"
+                  placeholder="Search products..."
+                  className="pl-9 h-10 rounded-xl bg-secondary/40 border-border/80 focus:bg-background transition-colors"
                 />
               </form>
-              <div className="mt-4 border-t pt-4">
-                {authUser ? (
-                  <>
+
+              {/* User Greeting Card if logged in */}
+              {authUser ? (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-sm">
+                    {authUser.fullName ? authUser.fullName.slice(0, 2).toUpperCase() : "BK"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {authUser.fullName || "Valued Customer"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">{authUser.email}</p>
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 active:scale-[0.98] transition-transform"
+                >
+                  Sign in with Google
+                </Link>
+              )}
+
+              {/* Main Store Links (Home, Groups, Blog, Track Order) */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 pb-1">
+                  Explore
+                </p>
+                {mobileNavLinks.map((l) => {
+                  const Icon = l.icon;
+                  const isActive = pathname === l.href;
+                  return (
                     <Link
-                      href="/account"
+                      key={l.href}
+                      href={l.href}
                       onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all active:scale-[0.98] ${
+                        isActive
+                          ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
                     >
-                      <User className="h-4 w-4" /> My Account
+                      <Icon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                      {l.label}
                     </Link>
-                    <Link
-                      href="/orders"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                    >
-                      <Package className="h-4 w-4" /> My Orders
-                    </Link>
-                    <Link
-                      href="/rewards"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
-                    >
-                      <User className="h-4 w-4" /> Rewards
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          localStorage.removeItem("bk_auth_user");
-                        } catch {}
-                        setMobileOpen(false);
-                        window.location.href = "/auth/signout";
-                      }}
-                      className="mt-2 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-destructive hover:bg-accent"
-                    >
-                      <User className="h-4 w-4" /> Sign Out
-                    </button>
-                  </>
-                ) : (
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileOpen(false)}
-                    className="block rounded-md bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground"
-                  >
-                    Sign in with Google
-                  </Link>
-                )}
-                {authUser && (authUser.role === "ADMIN" || authUser.role === "AGENT" || authUser.role === "MODERATOR") && (
-                  <Link
-                    href={`/${authUser.role.toLowerCase()}`}
-                    onClick={() => setMobileOpen(false)}
-                    className="mt-2 flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-sm font-medium hover:bg-accent"
-                  >
-                    <Package className="h-4 w-4" /> {authUser.role} Dashboard
-                  </Link>
-                )}
+                  );
+                })}
               </div>
-            </nav>
+
+              {/* Customer Account Links (if logged in) */}
+              {authUser && (
+                <div className="space-y-1 border-t pt-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 pb-1">
+                    My Account
+                  </p>
+                  <Link
+                    href="/account"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary active:scale-[0.98]"
+                  >
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    Overview
+                  </Link>
+                  <Link
+                    href="/orders"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary active:scale-[0.98]"
+                  >
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    My Orders
+                  </Link>
+                  <Link
+                    href="/rewards"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary active:scale-[0.98]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Coins className="h-4 w-4 text-amber-500" />
+                      Budget Coins
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      Rewards
+                    </span>
+                  </Link>
+                  <Link
+                    href="/addresses"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary active:scale-[0.98]"
+                  >
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Saved Addresses
+                  </Link>
+
+                  {/* Staff Portal Link */}
+                  {(authUser.role === "ADMIN" || authUser.role === "AGENT" || authUser.role === "MODERATOR") && (
+                    <Link
+                      href={`/${authUser.role.toLowerCase()}`}
+                      onClick={() => setMobileOpen(false)}
+                      className="mt-2 flex items-center gap-3 rounded-xl bg-secondary/80 px-3 py-2 text-xs font-semibold text-foreground hover:bg-secondary"
+                    >
+                      <Shield className="h-4 w-4 text-primary" />
+                      {authUser.role} Control Panel
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Drawer Footer with Styled Sign Out */}
+            {authUser && (
+              <div className="border-t p-4 bg-muted/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.removeItem("bk_auth_user");
+                    } catch {}
+                    setMobileOpen(false);
+                    window.location.href = "/auth/signout";
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/20 active:scale-[0.98] transition-all"
+                >
+                  <LogOut className="h-4 w-4" /> Sign Out
+                </button>
+              </div>
+            )}
           </SheetContent>
         </Sheet>
 
@@ -170,7 +249,7 @@ export function StoreNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 ml-4">
-          {navLinks.map((l) => (
+          {desktopNavLinks.map((l) => (
             <Link
               key={l.href}
               href={l.href}

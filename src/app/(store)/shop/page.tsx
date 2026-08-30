@@ -40,24 +40,30 @@ export default async function ShopPage() {
   ]);
 
   // Serialize ALL Decimal values here (server side)
-  const serializedProducts = products.map((p) => ({
-    id: p.id,
-    slug: p.slug,
-    name: p.name,
-    basePrice: Number(p.basePrice),
-    primaryImage: p.images[0]?.imageUrl ?? null,
-    availableColors: extractColors(p.variants),
-    rating:
-      p.reviews.length > 0
-        ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length
-        : null,
-    reviewCount: p.reviews.length,
-    outOfStock: p.variants.every(
-      (v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) <= 0
-    ),
-    categorySlug: p.category.slug,
-    categoryName: p.category.name,
-  }));
+  const serializedProducts = products.map((p) => {
+    const minCompare = Math.min(
+      ...p.variants.map((v) => (v.compareAtPrice ? Number(v.compareAtPrice) : Infinity))
+    );
+    return {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      basePrice: Number(p.basePrice),
+      compareAtPrice: minCompare === Infinity ? null : minCompare,
+      primaryImage: p.images[0]?.imageUrl ?? null,
+      availableColors: extractColors(p.variants),
+      rating:
+        p.reviews.length > 0
+          ? p.reviews.reduce((s, r) => s + r.rating, 0) / p.reviews.length
+          : null,
+      reviewCount: p.reviews.length,
+      outOfStock: p.variants.every(
+        (v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) <= 0
+      ),
+      categorySlug: p.category.slug,
+      categoryName: p.category.name,
+    };
+  });
 
   return (
     <ShopClient

@@ -9,11 +9,20 @@ import { useRouter } from "next/navigation";
 import { formatTk } from "@/lib/utils/currency";
 import type { Product, ProductVariant, ProductImage } from "@prisma/client";
 
-type FullProduct = Product & {
-  images: ProductImage[];
-  variants: (ProductVariant & {
+type FullProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  basePrice: number | string;
+  images: Array<{ imageUrl: string }>;
+  variants: Array<{
+    id: string;
+    sku: string;
+    price: number | string;
+    compareAtPrice?: number | string | null;
+    options: unknown;
     inventory: { quantity: number; reserved: number } | null;
-  })[];
+  }>;
 };
 
 export function ProductDetailClient({
@@ -41,6 +50,18 @@ export function ProductDetailClient({
       return true;
     });
   }, [product.variants, selectedColor, selectedSize]);
+
+  const currentPrice = Number(selectedVariant?.price ?? product.basePrice);
+  const currentCompareAt = selectedVariant?.compareAtPrice
+    ? Number(selectedVariant.compareAtPrice)
+    : product.variants[0]?.compareAtPrice
+    ? Number(product.variants[0].compareAtPrice)
+    : null;
+
+  const discountPercent =
+    currentCompareAt && currentCompareAt > currentPrice
+      ? Math.round(((currentCompareAt - currentPrice) / currentCompareAt) * 100)
+      : null;
 
   const availableQty = selectedVariant
     ? Math.max(
@@ -106,29 +127,28 @@ export function ProductDetailClient({
 
   return (
     <div className="space-y-5">
-      {/* Price */}
-      <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-bold">
-          {formatTk(selectedVariant?.price ?? product.basePrice)}
-        </span>
-        {selectedVariant?.compareAtPrice &&
-          Number(selectedVariant.compareAtPrice) > Number(selectedVariant.price) && (
+      {/* Price & Discount */}
+      <div className="space-y-1">
+        <div className="flex items-baseline gap-3">
+          <span className="text-3xl font-extrabold tracking-tight text-foreground">
+            {formatTk(currentPrice)}
+          </span>
+          {discountPercent && currentCompareAt && (
             <>
-              <span className="text-base text-muted-foreground line-through">
-                {formatTk(selectedVariant.compareAtPrice)}
+              <span className="text-lg text-muted-foreground line-through decoration-rose-500/60 font-medium">
+                {formatTk(currentCompareAt)}
               </span>
-              <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold text-destructive-foreground">
-                -
-                {Math.round(
-                  ((Number(selectedVariant.compareAtPrice) -
-                    Number(selectedVariant.price)) /
-                    Number(selectedVariant.compareAtPrice)) *
-                    100
-                )}
-                %
+              <span className="rounded-full bg-rose-600 px-2.5 py-0.5 text-xs font-bold text-white shadow-xs">
+                -{discountPercent}% OFF
               </span>
             </>
           )}
+        </div>
+
+        {/* Coin Earnings Pill */}
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+          <span>🪙 Earn <strong>+{Math.floor(currentPrice)} Budget Coins</strong> on this order</span>
+        </div>
       </div>
 
       {/* Colors */}

@@ -54,8 +54,27 @@ export function ProductForm({
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? categories[0]?.id ?? "");
   const [brand, setBrand] = useState(product?.brand ?? "");
   const [basePrice, setBasePrice] = useState(product ? String(product.basePrice) : "");
+  const defaultCompare = product?.variants[0]?.compareAtPrice ? String(product.variants[0].compareAtPrice) : "";
+  const [compareAtPrice, setCompareAtPrice] = useState(defaultCompare);
   const [status, setStatus] = useState<string>(product?.status ?? "DRAFT");
   const [isFeatured, setIsFeatured] = useState(product?.isFeatured ?? false);
+
+  function handleBasePriceChange(val: string) {
+    setBasePrice(val);
+    setVariants((prev) =>
+      prev.map((v) => (v.price === basePrice || !v.price ? { ...v, price: val } : v))
+    );
+  }
+
+  function handleCompareAtPriceChange(val: string) {
+    setCompareAtPrice(val);
+    setVariants((prev) =>
+      prev.map((v) => ({
+        ...v,
+        compareAtPrice: v.compareAtPrice === compareAtPrice || !v.compareAtPrice ? val : v.compareAtPrice,
+      }))
+    );
+  }
 
   const [variants, setVariants] = useState<VariantRow[]>(
     product?.variants.map((v) => {
@@ -262,26 +281,58 @@ export function ProductForm({
             />
           </div>
           <div>
-            <Label htmlFor="basePrice">Base Price (tk) *</Label>
+            <Label htmlFor="basePrice">Sale / Base Price (৳) *</Label>
             <Input
               id="basePrice"
               type="number"
               step="0.01"
               required
               value={basePrice}
-              onChange={(e) => setBasePrice(e.target.value)}
-              placeholder="699"
+              onChange={(e) => handleBasePriceChange(e.target.value)}
+              placeholder="600"
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">Price the customer pays.</p>
           </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 text-sm">
+
+          <div>
+            <Label htmlFor="compareAtPrice">Original / Compare At Price (৳)</Label>
+            <Input
+              id="compareAtPrice"
+              type="number"
+              step="0.01"
+              value={compareAtPrice}
+              onChange={(e) => handleCompareAtPriceChange(e.target.value)}
+              placeholder="1000"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">Set higher to create a strikethrough discount.</p>
+          </div>
+
+          {/* Live Discount & Offer Page Preview */}
+          {Number(compareAtPrice) > Number(basePrice) && Number(basePrice) > 0 && (
+            <div className="sm:col-span-2 rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-rose-600 text-white font-bold">
+                  -{Math.round(((Number(compareAtPrice) - Number(basePrice)) / Number(compareAtPrice)) * 100)}% OFF
+                </Badge>
+                <span className="text-xs text-foreground font-medium">
+                  Strikethrough Price: <span className="line-through text-muted-foreground">৳{compareAtPrice}</span> → <span className="font-bold text-rose-600">৳{basePrice}</span>
+                </span>
+              </div>
+              <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/15 px-2 py-0.5 rounded-full">
+                🔥 Auto-included in Offers Page
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4 sm:col-span-2 pt-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={isFeatured}
                 onChange={(e) => setIsFeatured(e.target.checked)}
-                className="rounded"
+                className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
               />
-              Featured product
+              <span className="font-medium">Featured product</span>
             </label>
           </div>
         </CardContent>

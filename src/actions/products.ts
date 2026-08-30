@@ -206,7 +206,7 @@ export async function saveProductAction(input: unknown): Promise<SaveResult> {
         if (data.images.length > 0) {
           await tx.productImage.createMany({
             data: data.images.map((url, idx) => ({
-              productId,
+              productId: newProduct.id,
               imageUrl: url,
               sortOrder: idx,
               isPrimary: idx === 0,
