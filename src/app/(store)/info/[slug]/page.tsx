@@ -1,5 +1,3 @@
-import { StoreNavbar } from "@/components/store/navbar";
-import { StoreFooter } from "@/components/store/footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Truck, RotateCcw, ShieldCheck, Phone } from "lucide-react";
 
@@ -36,37 +34,6 @@ const pages: Record<string, { title: string; body: React.ReactNode }> = {
       </div>
     ),
   },
-  shipping: {
-    title: "Shipping & Delivery",
-    body: (
-      <div className="space-y-3 text-sm text-muted-foreground">
-        <p className="flex items-start gap-2"><Truck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Inside Dhaka:</strong> tk 80, estimated 1–2 days</span></p>
-        <p className="flex items-start gap-2"><Truck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Outside Dhaka:</strong> tk 120, estimated 2–4 days</span></p>
-        <p>All orders are Cash on Delivery. Pay in cash when your order arrives. No online payment required.</p>
-      </div>
-    ),
-  },
-  returns: {
-    title: "Returns & Exchanges",
-    body: (
-      <div className="space-y-3 text-sm text-muted-foreground">
-        <p className="flex items-start gap-2"><RotateCcw className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Quality guaranteed:</strong> Every product is quality-checked before shipping.</span></p>
-        <p className="flex items-start gap-2"><ShieldCheck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Damaged items:</strong> Contact us within 48 hours of delivery with photos.</span></p>
-        <p>Items must be unworn, unwashed, and with original tags. Refunds are processed manually via mobile transfer.</p>
-      </div>
-    ),
-  },
-  contact: {
-    title: "Contact Us",
-    body: (
-      <div className="space-y-3 text-sm text-muted-foreground">
-        <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" /> +880 1XXX-XXXXXX</p>
-        <p>support@budgetkingbd.com</p>
-        <p>Dhaka, Bangladesh</p>
-        <p className="text-xs pt-4">Customer support hours: 10am–8pm (Sat–Thu)</p>
-      </div>
-    ),
-  },
   privacy: {
     title: "Privacy Policy",
     body: (
@@ -84,10 +51,30 @@ const pages: Record<string, { title: string; body: React.ReactNode }> = {
       <div className="space-y-3 text-sm text-muted-foreground">
         <p>By placing an order on Budget King BD, you agree to these terms:</p>
         <p><strong>Payment:</strong> All orders are Cash on Delivery (COD). You pay in cash when your order is delivered.</p>
-        <p><strong>Cancellation:</strong> You can cancel orders that are in PENDING or CONFIRMED status. Once shipped, cancellation is not possible — use the return/exchange process instead.</p>
-        <p><strong>Returns:</strong> Items can be exchanged within 7 days of delivery if unworn, unwashed, and with original tags.</p>
+        <p><strong>Cancellation:</strong> You can cancel orders that are in PENDING or CONFIRMED status. Once shipped, cancellation is not possible.</p>
+        <p><strong>Returns:</strong> Items can be returned within 7 days of delivery if unworn and with original tags.</p>
         <p><strong>Budget Coins:</strong> Coins are awarded on delivered orders and can be redeemed for vouchers. Coins may be reversed if an order is cancelled or returned.</p>
         <p><strong>Group Orders:</strong> When participating in a group order, the group owner is responsible for the combined payment upon delivery.</p>
+      </div>
+    ),
+  },
+  shipping: {
+    title: "Shipping & Delivery",
+    body: (
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p className="flex items-start gap-2"><Truck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Inside Dhaka:</strong> tk 80, estimated 1–2 days</span></p>
+        <p className="flex items-start gap-2"><Truck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Outside Dhaka:</strong> tk 120, estimated 2–4 days</span></p>
+        <p>All orders are Cash on Delivery. Pay in cash when your order arrives. No online payment required.</p>
+      </div>
+    ),
+  },
+  returns: {
+    title: "Returns & Exchanges",
+    body: (
+      <div className="space-y-3 text-sm text-muted-foreground">
+        <p className="flex items-start gap-2"><RotateCcw className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>7-day return:</strong> Wrong size or color? Return within 7 days of delivery.</span></p>
+        <p className="flex items-start gap-2"><ShieldCheck className="h-4 w-4 mt-0.5 text-primary" /> <span><strong>Damaged items:</strong> Contact us within 48 hours of delivery with photos.</span></p>
+        <p>Items must be unworn, unwashed, and with original tags. Refunds are processed manually via mobile transfer.</p>
       </div>
     ),
   },
@@ -113,17 +100,13 @@ export default async function InfoPage({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <StoreNavbar />
-      <main className="flex-1 container mx-auto px-4 py-12">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="mb-6 text-3xl font-bold tracking-tight">{page.title}</h1>
-          <Card>
-            <CardContent className="p-6">{page.body}</CardContent>
-          </Card>
-        </div>
-      </main>
-      <StoreFooter />
+    <div className="container mx-auto px-4 py-12">
+      <div className="mx-auto max-w-2xl">
+        <h1 className="mb-6 text-3xl font-bold tracking-tight">{page.title}</h1>
+        <Card>
+          <CardContent className="p-6">{page.body}</CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
