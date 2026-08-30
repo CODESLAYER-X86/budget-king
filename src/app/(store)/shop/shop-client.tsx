@@ -17,11 +17,18 @@ type Product = {
   rating: number | null;
   reviewCount: number;
   outOfStock: boolean;
+  categoryId: string;
   categorySlug: string;
   categoryName: string;
+  categoryParentId?: string | null;
 };
 
-type Category = { id: string; name: string; slug: string };
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  parentId?: string | null;
+};
 
 export function ShopClient({
   products,
@@ -48,9 +55,30 @@ export function ShopClient({
       );
     }
 
-    // Category filter
+    // Hierarchical Category filter (selects category and all its subcategories)
     if (categoryFilter) {
-      result = result.filter((p) => p.categorySlug === categoryFilter);
+      const selectedCategory = categories.find((c) => c.slug === categoryFilter);
+      if (selectedCategory) {
+        const matchedCategoryIds = new Set<string>([selectedCategory.id]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const c of categories) {
+            if (c.parentId && matchedCategoryIds.has(c.parentId) && !matchedCategoryIds.has(c.id)) {
+              matchedCategoryIds.add(c.id);
+              changed = true;
+            }
+          }
+        }
+        result = result.filter(
+          (p) =>
+            p.categorySlug === categoryFilter ||
+            matchedCategoryIds.has(p.categoryId) ||
+            (p.categoryParentId && matchedCategoryIds.has(p.categoryParentId))
+        );
+      } else {
+        result = result.filter((p) => p.categorySlug === categoryFilter);
+      }
     }
 
     // Sort
@@ -59,7 +87,7 @@ export function ShopClient({
     else if (sort === "name_asc") result.sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
-  }, [products, search, categoryFilter, sort]);
+  }, [products, search, categoryFilter, sort, categories]);
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">

@@ -2,11 +2,10 @@ import { db } from "@/lib/db";
 import { ShopClient } from "./shop-client";
 import { safeQuery } from "@/lib/safe-query";
 
-// Cache for 5 minutes — product catalog rarely changes
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function ShopPage() {
-  // Fetch ALL active products in ONE query (cached for 5 min)
+  // Fetch ALL active products in ONE query
   const [products, categories] = await Promise.all([
     safeQuery(
       () => db.product.findMany({
@@ -23,7 +22,7 @@ export default async function ShopPage() {
             },
           },
           reviews: { where: { status: "APPROVED" }, select: { rating: true } },
-          category: { select: { name: true, slug: true } },
+          category: { select: { id: true, name: true, slug: true, parentId: true } },
         },
         orderBy: { createdAt: "desc" },
         take: 48,
@@ -33,7 +32,7 @@ export default async function ShopPage() {
     safeQuery(
       () => db.category.findMany({
         where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       }),
       []
     ),
@@ -60,15 +59,22 @@ export default async function ShopPage() {
       outOfStock: p.variants.every(
         (v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) <= 0
       ),
+      categoryId: p.category.id,
       categorySlug: p.category.slug,
       categoryName: p.category.name,
+      categoryParentId: p.category.parentId,
     };
   });
 
   return (
     <ShopClient
       products={serializedProducts}
-      categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
+      categories={categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        parentId: c.parentId ?? null,
+      }))}
     />
   );
 }
