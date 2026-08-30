@@ -434,11 +434,11 @@ export function CheckoutClient({
                   <span>{formatTk(subtotal)}</span>
                 </div>
 
-                {/* Promo Code / Voucher */}
+                {/* Promo Code */}
                 <div className="space-y-2 pt-2 border-t">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold flex items-center gap-1.5">
-                      <Tag className="h-3.5 w-3.5 text-primary" /> Promo Code or Voucher
+                      <Tag className="h-3.5 w-3.5 text-primary" /> Promo Code
                     </Label>
                   </div>
 
@@ -472,7 +472,7 @@ export function CheckoutClient({
                           type="text"
                           value={voucherCode}
                           onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                          placeholder="Code (e.g. EID50, BKVC-...)"
+                          placeholder="Code (e.g. EID50, WELCOME20)"
                           className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 text-xs font-mono uppercase"
                         />
                         <Button
@@ -531,6 +531,17 @@ export function CheckoutClient({
                         Coin redemption not applicable with current order amount.
                       </p>
                     )}
+                  </div>
+                )}
+
+                {!user && (
+                  <div className="flex items-center justify-between p-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 text-xs">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Coins className="h-3.5 w-3.5 text-amber-500" /> Have Budget Coins?
+                    </span>
+                    <Link href="/login?next=/checkout" className="font-bold text-amber-700 dark:text-amber-300 hover:underline">
+                      Log in to redeem →
+                    </Link>
                   </div>
                 )}
 
