@@ -140,7 +140,7 @@ export function StoreNavbar() {
                     Sign in with Google
                   </Link>
                 )}
-                {user && (authUser.role === "ADMIN" || authUser.role === "AGENT" || authUser.role === "MODERATOR") && (
+                {authUser && (authUser.role === "ADMIN" || authUser.role === "AGENT" || authUser.role === "MODERATOR") && (
                   <Link
                     href={`/${authUser.role.toLowerCase()}`}
                     onClick={() => setMobileOpen(false)}
