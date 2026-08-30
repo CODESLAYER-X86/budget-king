@@ -46,7 +46,7 @@ export function StoreNavbar() {
   const localCartCount = useCart((s) => s.count());
   const router = useRouter();
 
-  const totalCart = cartCount ?? localCartCount;
+  const totalCart = localCartCount;
 
   function onSearch(e: React.FormEvent) {
     e.preventDefault();
