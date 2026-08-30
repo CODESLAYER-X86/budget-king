@@ -1,6 +1,9 @@
 import { getSession } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { AuthClient } from "./auth-client";
+import { Suspense } from "react";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Sign in — Budget King BD",
@@ -24,7 +27,9 @@ export default async function LoginPage({
               Sign in to track orders, earn Budget Coins, and shop with groups.
             </p>
           </div>
-          <AuthClient />
+          <Suspense fallback={<div className="h-10 w-full animate-pulse rounded-md bg-muted" />}>
+            <AuthClient />
+          </Suspense>
         </div>
         <p className="mt-4 text-center text-xs text-muted-foreground">
           By signing in, you agree to our{" "}
