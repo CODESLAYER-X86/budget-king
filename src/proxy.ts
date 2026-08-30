@@ -8,10 +8,12 @@ import { createServerClient as createSSRClient } from "@supabase/ssr";
  * Without it, the Supabase access token expires and the user appears
  * logged out when navigating between pages (especially on mobile).
  *
- * Performance: Skips Supabase call entirely if no auth cookies present.
+ * SAFETY: If the refresh fails or Supabase tries to clear cookies,
+ * we return the ORIGINAL unmodified response so cookies are preserved.
+ * The server component will handle auth checks separately.
  */
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: { headers: request.headers },
   });
 
@@ -37,44 +39,67 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // Refresh the Supabase auth session
-  const supabase = createSSRClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return allCookies;
-        },
-        setAll(cookiesToSet) {
-          // Step 1: Set all cookies on the request (for downstream server components)
-          cookiesToSet.forEach(({ name, value }) => {
-            request.cookies.set(name, value);
-          });
+  // We'll build a NEW response only if setAll provides valid refreshed cookies.
+  // If Supabase tries to clear cookies (session invalid), we ignore it and
+  // return the original response — keeping existing cookies untouched.
+  let refreshedResponse: NextResponse | null = null;
 
-          // Step 2: Create the response ONCE with all updated request headers
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
+  try {
+    const supabase = createSSRClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return allCookies;
+          },
+          setAll(cookiesToSet) {
+            // Check if Supabase is trying to SET real tokens or CLEAR them
+            const hasRealTokens = cookiesToSet.some(
+              (c) =>
+                c.name.includes("auth-token") &&
+                !c.name.includes("code-verifier") &&
+                c.value.length > 10
+            );
 
-          // Step 3: Set all cookies on the SINGLE response (for the browser)
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, {
-              ...options,
-              path: "/",
-              sameSite: "lax",
-              secure: process.env.NODE_ENV === "production",
+            if (!hasRealTokens) {
+              // Supabase is trying to clear cookies (session invalid/expired).
+              // DO NOT apply — keep existing cookies so user isn't force-logged-out.
+              return;
+            }
+
+            // Real token refresh — apply the new cookies
+            cookiesToSet.forEach(({ name, value }) => {
+              request.cookies.set(name, value);
             });
-          });
+
+            refreshedResponse = NextResponse.next({
+              request: { headers: request.headers },
+            });
+
+            cookiesToSet.forEach(({ name, value, options }) => {
+              refreshedResponse!.cookies.set(name, value, {
+                ...options,
+                path: "/",
+                sameSite: "lax",
+                secure: process.env.NODE_ENV === "production",
+              });
+            });
+          },
         },
-      },
-    }
-  );
+      }
+    );
 
-  // This refreshes the session and sets updated cookies on the response
-  await supabase.auth.getUser();
+    // This refreshes the session and may trigger setAll
+    await supabase.auth.getUser();
+  } catch {
+    // If Supabase call fails entirely (network error, etc.),
+    // return original response — don't touch cookies
+    return response;
+  }
 
-  return response;
+  // Return refreshed response if we got real tokens, otherwise original
+  return refreshedResponse ?? response;
 }
 
 export const config = {
