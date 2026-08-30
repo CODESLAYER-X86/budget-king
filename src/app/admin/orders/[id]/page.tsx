@@ -15,15 +15,7 @@ const NEXT_ACTION: Record<string, { label: string; action: string }> = {
   PENDING: { label: "Confirm Order", action: "CONFIRMED" },
   CONFIRMED: { label: "Start Processing", action: "PROCESSING" },
   PROCESSING: { label: "Mark as Shipped", action: "SHIPPED" },
-  SHIPPED: { label: "Mark as Delivered", action: "DELIVERED" },
 };
-
-// After shipping, show these additional options
-const POST_SHIP_ACTIONS = [
-  { label: "Mark Delivered", action: "DELIVERED", variant: "default" as const },
-  { label: "Delivery Failed", action: "DELIVERY_FAILED", variant: "destructive" as const },
-  { label: "Mark Returned", action: "RETURNED", variant: "destructive" as const },
-];
 
 export default async function AdminOrderDetailPage({
   params,
@@ -94,23 +86,19 @@ export default async function AdminOrderDetailPage({
                 </div>
               </CardContent>
             </Card>
-          ) : order.status === "SHIPPED" || order.status === "DELIVERED" ? (
+          ) : order.status === "SHIPPED" ? (
             <Card className="border-primary">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-3">
-                  {order.status === "SHIPPED"
-                    ? "Order is out for delivery. Update the outcome:"
-                    : "Order delivered. Update if needed:"}
+                  Order is out for delivery. Update the outcome:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {order.status === "SHIPPED" && (
-                    <OrderStatusActions
-                      orderId={order.id}
-                      currentStatus={order.status}
-                      nextStatus="DELIVERED"
-                      nextLabel="✅ Mark Delivered"
-                    />
-                  )}
+                  <OrderStatusActions
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    nextStatus="DELIVERED"
+                    nextLabel="✅ Mark Delivered"
+                  />
                   <OrderStatusActions
                     orderId={order.id}
                     currentStatus={order.status}
@@ -118,6 +106,16 @@ export default async function AdminOrderDetailPage({
                     nextLabel="❌ Delivery Failed"
                     variant="destructive"
                   />
+                </div>
+              </CardContent>
+            </Card>
+          ) : order.status === "DELIVERED" ? (
+            <Card className="border-border">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Order delivered successfully. Update if customer returns the item:
+                </p>
+                <div className="flex flex-wrap gap-2">
                   <OrderStatusActions
                     orderId={order.id}
                     currentStatus={order.status}

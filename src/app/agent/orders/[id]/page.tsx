@@ -14,7 +14,6 @@ const NEXT_ACTION: Record<string, { label: string; action: string }> = {
   PENDING: { label: "Confirm Order", action: "CONFIRMED" },
   CONFIRMED: { label: "Start Processing", action: "PROCESSING" },
   PROCESSING: { label: "Mark as Shipped", action: "SHIPPED" },
-  SHIPPED: { label: "Mark as Delivered", action: "DELIVERED" },
 };
 
 export default async function AgentOrderDetailPage({
@@ -25,11 +24,23 @@ export default async function AgentOrderDetailPage({
   const { id } = await params;
   const order = await db.order.findUnique({
     where: { id },
-    include: { items: true, deliveryZone: true },
+    include: {
+      items: true,
+      deliveryZone: true,
+      statusHistory: { orderBy: { createdAt: "asc" } },
+    },
   });
+
   if (!order) notFound();
 
-  const address = order.deliveryAddressJson as any;
+  const address = order.deliveryAddressJson as {
+    fullName?: string;
+    phone?: string;
+    division?: string;
+    district?: string;
+    area?: string;
+    addressLine?: string;
+  };
   const nextAction = NEXT_ACTION[order.status];
 
   return (
@@ -46,7 +57,7 @@ export default async function AgentOrderDetailPage({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">#{order.orderNumber}</h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+          <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
             <Clock className="h-3.5 w-3.5" />
             {new Date(order.createdAt).toLocaleString("en-BD")}
           </p>
@@ -72,23 +83,13 @@ export default async function AgentOrderDetailPage({
                 </div>
               </CardContent>
             </Card>
-          ) : order.status === "SHIPPED" || order.status === "DELIVERED" ? (
+          ) : order.status === "SHIPPED" ? (
             <Card className="border-primary">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-3">
-                  {order.status === "SHIPPED"
-                    ? "Order is out for delivery. Update the outcome:"
-                    : "Order delivered. Update if needed:"}
+                  Order is out for delivery. Update the outcome:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {order.status === "SHIPPED" && (
-                    <OrderStatusActions
-                      orderId={order.id}
-                      currentStatus={order.status}
-                      nextStatus="DELIVERED"
-                      nextLabel="✅ Mark Delivered"
-                    />
-                  )}
                   <OrderStatusActions
                     orderId={order.id}
                     currentStatus={order.status}
@@ -96,6 +97,22 @@ export default async function AgentOrderDetailPage({
                     nextLabel="❌ Delivery Failed"
                     variant="destructive"
                   />
+                  <OrderStatusActions
+                    orderId={order.id}
+                    currentStatus={order.status}
+                    nextStatus="DELIVERED"
+                    nextLabel="✅ Mark Delivered"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ) : order.status === "DELIVERED" ? (
+            <Card className="border-border">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Order delivered successfully. Update if customer returns the item:
+                </p>
+                <div className="flex flex-wrap gap-2">
                   <OrderStatusActions
                     orderId={order.id}
                     currentStatus={order.status}

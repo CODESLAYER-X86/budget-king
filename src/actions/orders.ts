@@ -110,7 +110,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
       const nextSeq = lastOrder ? parseInt(lastOrder.orderNumber.split("-")[2], 10) + 1 : 1;
       const orderNumber = `${prefix}${String(nextSeq).padStart(6, "0")}`;
 
-      // 3d. Calculate totals
+      // 3d. Calculate totals and process voucher
       let subtotal = 0;
       const orderItemsData = data.lines.map((line) => {
         const variant = variants.find((v) => v.id === line.variantId)!;
@@ -131,8 +131,38 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         };
       });
 
+      let appliedVoucherId: string | null = null;
+      let discount = 0;
+
+      if (data.voucherCode && data.voucherCode.trim()) {
+        if (!userId) {
+          throw new Error("Please sign in to apply vouchers");
+        }
+        const normalizedCode = data.voucherCode.toUpperCase().trim();
+        const cv = await tx.customerVoucher.findUnique({
+          where: { code: normalizedCode },
+          include: { voucher: true },
+        });
+
+        if (!cv) throw new Error("Invalid voucher code");
+        if (cv.userId !== userId) throw new Error("This voucher does not belong to your account");
+        if (cv.status !== "ACTIVE") throw new Error(`Voucher is ${cv.status.toLowerCase()}`);
+        if (cv.expiresAt <= new Date()) throw new Error("Voucher has expired");
+        if (subtotal < Number(cv.voucher.minOrderValue)) {
+          throw new Error(`Minimum order of ৳${Number(cv.voucher.minOrderValue)} required for this voucher`);
+        }
+
+        if (cv.voucher.type === "FIXED_AMOUNT") {
+          discount = Number(cv.voucher.value);
+        } else {
+          discount = Math.round((subtotal * Number(cv.voucher.value)) / 100);
+        }
+        discount = Math.min(discount, subtotal);
+        appliedVoucherId = cv.id;
+      }
+
       const deliveryCharge = Number(zone.charge);
-      const total = subtotal + deliveryCharge;
+      const total = Math.max(0, subtotal - discount + deliveryCharge);
 
       // 3e. Create order + items + status history + audit log in ONE create
       const order = await tx.order.create({
@@ -155,8 +185,9 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           deliveryZoneId: zone.id,
           deliveryCharge: zone.charge,
           subtotal,
-          discount: 0,
+          discount,
           total,
+          appliedVoucherId,
           notes: data.notes ?? null,
           items: { create: orderItemsData },
           statusHistory: {
@@ -164,6 +195,18 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           },
         },
       });
+
+      // 3f. Mark voucher as USED
+      if (appliedVoucherId) {
+        await tx.customerVoucher.update({
+          where: { id: appliedVoucherId },
+          data: {
+            status: "USED",
+            usedOnOrderId: order.id,
+            usedAt: new Date(),
+          },
+        });
+      }
 
       // 3f. Reserve stock — batch (no movements, just increment reserved)
       for (const line of data.lines) {
