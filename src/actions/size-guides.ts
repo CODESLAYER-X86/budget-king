@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth/session";
 const SaveSchema = z.object({
   categoryId: z.string(),
   title: z.string().min(1),
-  rows: z.array(z.record(z.string())),
+  rows: z.array(z.record(z.string(), z.string())),
   notes: z.string().optional(),
 });
 
@@ -29,8 +29,8 @@ export async function saveSizeGuideAction(input: unknown): Promise<Result> {
 
   const guide = await db.sizeGuide.upsert({
     where: { categoryId },
-    create: { categoryId, title, rows, notes: notes || null },
-    update: { title, rows, notes: notes || null },
+    create: { categoryId, title, rows: rows as any, notes: notes || null },
+    update: { title, rows: rows as any, notes: notes || null },
   });
   return { ok: true, id: guide.id };
 }

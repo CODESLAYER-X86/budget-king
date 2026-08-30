@@ -41,7 +41,7 @@ export function ProductForm({
   product,
 }: {
   categories: Category[];
-  product: FullProduct;
+  product?: FullProduct;
 }) {
   const router = useRouter();
   const { toast } = useToast();

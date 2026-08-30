@@ -269,6 +269,7 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           couponDiscount,
           coinDiscount,
           coinsRedeemed,
+          total,
           appliedVoucherId,
           appliedCouponId,
           notes: data.notes ?? null,

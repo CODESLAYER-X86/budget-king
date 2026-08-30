@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,7 +20,7 @@ export default async function AdminInventoryPage({
   searchParams: Promise<{ filter?: string }>;
 }) {
   const { filter } = await searchParams;
-  const where =
+  const where: Prisma.ProductVariantWhereInput =
     filter === "low"
       ? { status: "ACTIVE", inventory: { quantity: { lte: 5 } } }
       : { status: "ACTIVE" };

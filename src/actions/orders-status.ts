@@ -187,7 +187,7 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
       await tx.auditLog.create({
         data: {
           actorId: session.id,
-          actorRole: session.profile.role,
+          actorRole: session.profile?.role ?? "ADMIN",
           action: "order.status_change",
           target: `order:${order.orderNumber}`,
           details: { from: order.status, to: data.newStatus, reason: data.reason } as any,

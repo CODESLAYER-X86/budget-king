@@ -243,7 +243,7 @@ export async function transferGroupOwnershipAction(
     await tx.auditLog.create({
       data: {
         actorId: session.id,
-        actorRole: session.profile.role,
+        actorRole: session.profile?.role ?? "CUSTOMER",
         action: "group.transfer_ownership",
         target: `group:${groupId}`,
         details: { newOwnerId } as any,
