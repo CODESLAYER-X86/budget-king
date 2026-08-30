@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { ShopClient } from "./shop-client";
+import { safeQuery } from "@/lib/safe-query";
 
 // Cache for 5 minutes — product catalog rarely changes
 export const revalidate = 300;
@@ -7,29 +8,35 @@ export const revalidate = 300;
 export default async function ShopPage() {
   // Fetch ALL active products in ONE query (cached for 5 min)
   const [products, categories] = await Promise.all([
-    db.product.findMany({
-      where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
-      include: {
-        images: { orderBy: { sortOrder: "asc" }, take: 1 },
-        variants: {
-          where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
-          select: {
-            price: true,
-            compareAtPrice: true,
-            options: true,
-            inventory: { select: { quantity: true, reserved: true } },
+    safeQuery(
+      () => db.product.findMany({
+        where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] } },
+        include: {
+          images: { orderBy: { sortOrder: "asc" }, take: 1 },
+          variants: {
+            where: { status: "ACTIVE" },
+            select: {
+              price: true,
+              compareAtPrice: true,
+              options: true,
+              inventory: { select: { quantity: true, reserved: true } },
+            },
           },
+          reviews: { where: { status: "APPROVED" }, select: { rating: true } },
+          category: { select: { name: true, slug: true } },
         },
-        reviews: { where: { status: "APPROVED" }, select: { rating: true } },
-        category: { select: { name: true, slug: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 48,
-    }),
-    db.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-    }),
+        orderBy: { createdAt: "desc" },
+        take: 48,
+      }),
+      []
+    ),
+    safeQuery(
+      () => db.category.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      []
+    ),
   ]);
 
   // Serialize ALL Decimal values here (server side)

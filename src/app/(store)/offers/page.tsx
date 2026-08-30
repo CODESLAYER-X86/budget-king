@@ -1,42 +1,42 @@
 import { db } from "@/lib/db";
 import { ProductCard } from "@/components/store/product-card";
+import { safeQuery } from "@/lib/safe-query";
 import { Badge } from "@/components/ui/badge";
 import { Tag } from "lucide-react";
 
 export const revalidate = 60;
 
-export const metadata = {
-  title: "Offers — Budget King BD",
-};
-
 export default async function OffersPage() {
   // Show products that have a compareAtPrice (i.e., on sale)
-  const products = await db.product.findMany({
-    where: {
-      status: "ACTIVE",
-      variants: {
-        some: {
-          status: "ACTIVE",
-          compareAtPrice: { not: null },
+  const products = await safeQuery(
+    () => db.product.findMany({
+      where: {
+        status: { in: ["ACTIVE", "OUT_OF_STOCK"] },
+        variants: {
+          some: {
+            status: "ACTIVE",
+            compareAtPrice: { not: null },
+          },
         },
       },
-    },
-    include: {
-      images: { orderBy: { sortOrder: "asc" }, take: 1 },
-      variants: {
-        where: { status: { in: ["ACTIVE", "OUT_OF_STOCK"] }, compareAtPrice: { not: null } },
-        select: {
-          price: true,
-          compareAtPrice: true,
-          options: true,
-          inventory: { select: { quantity: true, reserved: true } },
+      include: {
+        images: { orderBy: { sortOrder: "asc" }, take: 1 },
+        variants: {
+          where: { status: "ACTIVE", compareAtPrice: { not: null } },
+          select: {
+            price: true,
+            compareAtPrice: true,
+            options: true,
+            inventory: { select: { quantity: true, reserved: true } },
+          },
         },
+        reviews: { where: { status: "APPROVED" }, select: { rating: true } },
       },
-      reviews: { where: { status: "APPROVED" }, select: { rating: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 24,
-  });
+      orderBy: { updatedAt: "desc" },
+      take: 24,
+    }),
+    []
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -46,7 +46,7 @@ export default async function OffersPage() {
         </Badge>
         <h1 className="text-3xl font-bold tracking-tight">Special Offers</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {products.length} products on sale — Cash on Delivery available
+          {products.length} products on sale • Cash on Delivery available
         </p>
       </div>
 
@@ -82,8 +82,7 @@ export default async function OffersPage() {
                       : null,
                   reviewCount: p.reviews.length,
                   outOfStock: p.variants.every(
-                    (v) =>
-                      (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) <= 0
+                    (v) => (v.inventory?.quantity ?? 0) - (v.inventory?.reserved ?? 0) <= 0
                   ),
                 }}
               />
