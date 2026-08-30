@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";

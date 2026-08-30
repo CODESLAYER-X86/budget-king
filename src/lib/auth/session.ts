@@ -65,10 +65,11 @@ export async function getSession(): Promise<SessionUser | null> {
       
       try {
         const adminCount = await db.profile.count({ where: { role: "ADMIN" } });
-        shouldBeAdmin =
+        shouldBeAdmin = Boolean(
           firstAdminEmail &&
           userEmail === firstAdminEmail &&
-          adminCount === 0;
+          adminCount === 0
+        );
       } catch {
         // If count fails, just create as CUSTOMER
       }
