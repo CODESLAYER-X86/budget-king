@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/sheet";
 import { useCart } from "@/lib/cart-store";
 import { CartDrawer } from "@/components/store/cart-drawer";
-import { NotificationBell, type NotificationRow } from "@/components/shared/notification-bell";
 import { useRouter } from "next/navigation";
+import { useAuthUser } from "@/lib/auth/use-auth-user";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -35,17 +35,9 @@ const navLinks = [
   { href: "/track", label: "Track Order" },
 ];
 
-export function StoreNavbar({
-  user,
-  cartCount,
-  notifications = [],
-  unreadCount = 0,
-}: {
-  user?: { email: string; role: string; fullName: string | null } | null;
-  cartCount?: number;
-  notifications?: NotificationRow[];
-  unreadCount?: number;
-}) {
+export function StoreNavbar() {
+  // Client-side auth check — works with ISR cached pages
+  const authUser = useAuthUser();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -108,7 +100,7 @@ export function StoreNavbar({
                 />
               </form>
               <div className="mt-4 border-t pt-4">
-                {user ? (
+                {authUser ? (
                   <>
                     <Link
                       href="/account"
@@ -148,13 +140,13 @@ export function StoreNavbar({
                     Sign in with Google
                   </Link>
                 )}
-                {user && (user.role === "ADMIN" || user.role === "AGENT" || user.role === "MODERATOR") && (
+                {user && (authUser.role === "ADMIN" || authUser.role === "AGENT" || authUser.role === "MODERATOR") && (
                   <Link
-                    href={`/${user.role.toLowerCase()}`}
+                    href={`/${authUser.role.toLowerCase()}`}
                     onClick={() => setMobileOpen(false)}
                     className="mt-2 flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-sm font-medium hover:bg-accent"
                   >
-                    <Package className="h-4 w-4" /> {user.role} Dashboard
+                    <Package className="h-4 w-4" /> {authUser.role} Dashboard
                   </Link>
                 )}
               </div>
@@ -217,26 +209,25 @@ export function StoreNavbar({
             )}
           </Button>
 
-          {user ? (
+          {authUser ? (
             <>
-              {user.role === "ADMIN" || user.role === "AGENT" || user.role === "MODERATOR" ? (
+              {authUser.role === "ADMIN" || authUser.role === "AGENT" || authUser.role === "MODERATOR" ? (
                 <div className="hidden md:flex items-center gap-1">
                   <Link
-                    href={`/${user.role.toLowerCase()}`}
+                    href={`/${authUser.role.toLowerCase()}`}
                     className="px-3 py-2 text-sm font-medium rounded-md bg-secondary hover:bg-accent flex items-center gap-1"
                   >
                     <Package className="h-4 w-4" /> Dashboard
                   </Link>
                 </div>
               ) : null}
-              <NotificationBell notifications={notifications} unreadCount={unreadCount} />
               <div className="hidden md:flex items-center gap-1">
                 <Link href="/orders" className="px-3 py-2 text-sm font-medium rounded-md hover:bg-accent">Orders</Link>
                 <Link href="/rewards" className="px-3 py-2 text-sm font-medium rounded-md hover:bg-accent">Rewards</Link>
               </div>
               <Link href="/account">
                 <Button variant="ghost" size="icon" aria-label="My account">
-                  {user.fullName ? user.fullName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
+                  {authUser.fullName ? authUser.fullName.charAt(0).toUpperCase() : <User className="h-5 w-5" />}
                 </Button>
               </Link>
             </>
