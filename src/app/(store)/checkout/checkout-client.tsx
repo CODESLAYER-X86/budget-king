@@ -493,45 +493,64 @@ export function CheckoutClient({
                 </div>
 
                 {/* Direct Coin Redemption (Dynamic Rate: e.g. 10 or 30 Coins = ৳1) */}
-                {user && isDirectActive && coinBalance >= minCoins && (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-amber-500/20 p-1.5 text-amber-600 dark:text-amber-400">
-                          <Coins className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                            Redeem Budget Coins
-                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 font-mono">
-                              {coinBalance.toLocaleString()} Coins
-                            </Badge>
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {coinsPerTk} Coins = ৳1 discount
-                          </p>
+                {user && isDirectActive && (
+                  coinBalance >= minCoins ? (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-full bg-amber-500/20 p-1.5 text-amber-600 dark:text-amber-400">
+                            <Coins className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                              Redeem Budget Coins
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 font-mono">
+                                {coinBalance.toLocaleString()} Coins
+                              </Badge>
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {coinsPerTk} Coins = ৳1 discount
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {maxCoinsTk > 0 ? (
-                      <label className="flex items-center gap-2.5 cursor-pointer pt-1 border-t border-amber-500/15 select-none touch-manipulation">
-                        <input
-                          type="checkbox"
-                          checked={useCoins}
-                          onChange={(e) => setUseCoins(e.target.checked)}
-                          className="h-4 w-4 rounded border-amber-500 text-primary focus:ring-amber-500"
-                        />
-                        <span className="text-xs font-medium text-foreground">
-                          Use <span className="font-bold text-amber-600 dark:text-amber-400">{(maxCoinsTk * coinsPerTk).toLocaleString()} coins</span> to save <span className="font-bold text-green-600">{formatTk(maxCoinsTk)}</span>
-                        </span>
-                      </label>
-                    ) : (
-                      <p className="text-[11px] text-muted-foreground italic">
-                        Coin redemption not applicable with current order amount.
-                      </p>
-                    )}
-                  </div>
+                      {maxCoinsTk > 0 ? (
+                        <label className="flex items-center gap-2.5 cursor-pointer pt-1 border-t border-amber-500/15 select-none touch-manipulation">
+                          <input
+                            type="checkbox"
+                            checked={useCoins}
+                            onChange={(e) => setUseCoins(e.target.checked)}
+                            className="h-4 w-4 rounded border-amber-500 text-primary focus:ring-amber-500"
+                          />
+                          <span className="text-xs font-medium text-foreground">
+                            Use <span className="font-bold text-amber-600 dark:text-amber-400">{(maxCoinsTk * coinsPerTk).toLocaleString()} coins</span> to save <span className="font-bold text-green-600">{formatTk(maxCoinsTk)}</span>
+                          </span>
+                        </label>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Coin redemption not applicable with current order amount.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-4 w-4 text-amber-500 shrink-0" />
+                        <div>
+                          <span className="font-semibold text-foreground">
+                            {coinBalance.toLocaleString()} Coins
+                          </span>{" "}
+                          <span className="text-muted-foreground text-[11px]">
+                            (Min {minCoins} to redeem)
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-green-600 dark:text-green-400 font-medium">
+                        +Earn {Math.floor(subtotal)} on delivery
+                      </span>
+                    </div>
+                  )
                 )}
 
                 {!user && (
