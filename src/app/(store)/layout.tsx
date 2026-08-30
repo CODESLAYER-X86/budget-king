@@ -1,8 +1,16 @@
-import { StoreNavbar } from "@/components/store/navbar";
+import dynamic from "next/dynamic";
 import { StoreFooter } from "@/components/store/footer";
 
-// No auth check here — the navbar handles auth client-side
-// This allows pages to use ISR caching without caching the user state
+// Dynamically import navbar with ssr: false to prevent prerendering errors.
+// The navbar uses client-side auth (useAuthUser hook + Supabase browser client)
+// which cannot run during static generation.
+const StoreNavbar = dynamic(() => import("@/components/store/navbar").then(m => m.StoreNavbar), {
+  ssr: false,
+  loading: () => (
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur h-16" />
+  ),
+});
+
 export default function StoreLayout({
   children,
 }: {
