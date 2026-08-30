@@ -123,13 +123,19 @@ export function StoreNavbar() {
                     >
                       <User className="h-4 w-4" /> Rewards
                     </Link>
-                    <Link
-                      href="/auth/signout"
-                      onClick={() => setMobileOpen(false)}
-                      className="mt-2 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-accent"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          localStorage.removeItem("bk_auth_user");
+                        } catch {}
+                        setMobileOpen(false);
+                        window.location.href = "/auth/signout";
+                      }}
+                      className="mt-2 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-destructive hover:bg-accent"
                     >
                       <User className="h-4 w-4" /> Sign Out
-                    </Link>
+                    </button>
                   </>
                 ) : (
                   <Link
