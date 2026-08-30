@@ -19,6 +19,17 @@ export async function createServerClient() {
         },
         setAll(cookiesToSet) {
           try {
+            // Detect if Supabase is attempting a FULL session wipe (e.g. spurious network error)
+            const authCookies = cookiesToSet.filter(c => c.name.includes("auth-token"));
+            const isFullClear = 
+              authCookies.length > 0 && 
+              authCookies.every(c => !c.value || c.options?.maxAge === 0);
+
+            if (isFullClear) {
+              console.warn("Blocked Supabase from automatically wiping the session cookies.");
+              return;
+            }
+
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, {
                 ...options,
@@ -28,7 +39,7 @@ export async function createServerClient() {
               })
             );
           } catch {
-            // called from a Server Component — safe to ignore, proxy handles refresh
+            // called from a Server Component — safe to ignore
           }
         },
       },
