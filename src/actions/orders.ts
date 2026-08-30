@@ -209,27 +209,34 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
         }
       }
 
-      // 3f. Process Direct Coin Redemption (10 Coins = ৳1)
+      // 3f. Process Direct Coin Redemption (Dynamic rate: e.g. 10 or 30 Coins = ৳1)
       let coinDiscount = 0;
       let coinsRedeemed = 0;
 
       if (data.redeemCoins && userId) {
-        const coinBalanceResult = await tx.coinTransaction.aggregate({
-          where: { userId },
-          _sum: { amount: true },
-        });
-        const currentCoinBalance = coinBalanceResult._sum.amount ?? 0;
+        const [coinBalanceResult, rewardSetting] = await Promise.all([
+          tx.coinTransaction.aggregate({
+            where: { userId },
+            _sum: { amount: true },
+          }),
+          tx.rewardSetting.findUnique({ where: { id: "default" } }),
+        ]);
 
-        if (currentCoinBalance >= 10) {
+        const currentCoinBalance = coinBalanceResult._sum.amount ?? 0;
+        const coinsPerTk = rewardSetting?.coinsPerTk ?? 10;
+        const maxPercent = (rewardSetting?.maxRedemptionPercent ?? 20) / 100;
+        const minCoins = rewardSetting?.minCoinsToRedeem ?? 10;
+        const isDirectActive = rewardSetting?.isDirectRedemptionActive ?? true;
+
+        if (isDirectActive && currentCoinBalance >= minCoins && coinsPerTk > 0) {
           const remainingSubtotal = Math.max(0, subtotal - couponDiscount);
-          // Max coin discount: up to 20% of subtotal (or at least remaining subtotal up to ৳50)
           const maxAllowedTk = Math.min(
             remainingSubtotal,
-            Math.max(50, Math.floor(remainingSubtotal * 0.20))
+            Math.max(50, Math.floor(remainingSubtotal * maxPercent))
           );
-          const maxCoinsAffordable = Math.floor(currentCoinBalance / 10);
-          coinDiscount = Math.min(maxAllowedTk, maxCoinsAffordable);
-          coinsRedeemed = coinDiscount * 10;
+          const maxCoinsAffordableTk = Math.floor(currentCoinBalance / coinsPerTk);
+          coinDiscount = Math.min(maxAllowedTk, maxCoinsAffordableTk);
+          coinsRedeemed = coinDiscount * coinsPerTk;
         }
       }
 

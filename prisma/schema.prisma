@@ -557,6 +557,18 @@ model AuditLog {
 
 // Admin-configurable coin earning rule.
 // Example: minPurchase = 2000, coinsAwarded = 2000
+model RewardSetting {
+  id                       String   @id @default("default")
+  coinsPerTk               Int      @default(10) // e.g. 10, 20, 30 coins = ৳1 discount
+  coinsEarnedPerTk         Int      @default(1)  // e.g. 1 Tk spent = 1 coin earned
+  maxRedemptionPercent     Int      @default(20) // max % of order subtotal payable via coins
+  minCoinsToRedeem         Int      @default(10) // minimum balance required to redeem
+  isDirectRedemptionActive Boolean  @default(true)
+  updatedAt                DateTime @updatedAt
+
+  @@map("reward_settings")
+}
+
 model CoinRule {
   id              String   @id @default(cuid())
   name            String   @unique

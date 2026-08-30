@@ -75,36 +75,36 @@ export function CartDrawer({
                     <p className="text-sm font-semibold mt-1">
                       {formatTk(line.unitPrice)}
                     </p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center">
+                    <div className="mt-2.5 flex items-center justify-between">
+                      <div className="flex items-center rounded-lg border bg-secondary/30 p-0.5">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-8 w-8 rounded-md hover:bg-background active:scale-90 transition-transform"
                           onClick={() => setQuantity(line.variantId, line.quantity - 1)}
                           aria-label="Decrease"
                         >
-                          <Minus className="h-3 w-3" />
+                          <Minus className="h-3.5 w-3.5" />
                         </Button>
-                        <span className="px-3 text-sm font-medium">{line.quantity}</span>
+                        <span className="w-8 text-center text-sm font-semibold">{line.quantity}</span>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-8 w-8 rounded-md hover:bg-background active:scale-90 transition-transform"
                           onClick={() => setQuantity(line.variantId, line.quantity + 1)}
                           aria-label="Increase"
                         >
-                          <Plus className="h-3 w-3" />
+                          <Plus className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-90 transition-transform"
                         onClick={() => remove(line.variantId)}
                         aria-label="Remove"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -112,16 +112,21 @@ export function CartDrawer({
               ))}
             </div>
 
-            <div className="border-t p-4 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-semibold">{formatTk(subtotal)}</span>
+            <div className="border-t p-4 space-y-3 bg-background/95 backdrop-blur-sm">
+              <div className="flex items-center justify-between rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                <span>🪙 Budget Coins Reward:</span>
+                <span className="font-bold font-mono">+{Math.floor(subtotal)} Coins</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Delivery charge calculated at checkout.
+
+              <div className="flex justify-between text-base font-semibold">
+                <span>Subtotal</span>
+                <span>{formatTk(subtotal)}</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Delivery charge & discounts calculated at checkout.
               </p>
-              <Link href="/checkout" onClick={() => onOpenChange(false)}>
-                <Button className="w-full" size="lg">
+              <Link href="/checkout" onClick={() => onOpenChange(false)} className="block">
+                <Button className="w-full h-12 text-base font-bold shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform" size="lg">
                   Proceed to Checkout
                 </Button>
               </Link>

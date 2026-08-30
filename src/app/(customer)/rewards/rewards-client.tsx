@@ -65,16 +65,20 @@ const TYPE_LABELS: Record<string, string> = {
   REFERRAL_BONUS: "Referral bonus",
 };
 
+import type { RewardSettingData } from "@/actions/rewards";
+
 export function RewardsClient({
   balance,
   transactions,
   myVouchers,
   availableVouchers,
+  rewardSettings,
 }: {
   balance: number;
   transactions: Transaction[];
   myVouchers: MyVoucher[];
   availableVouchers: AvailableVoucher[];
+  rewardSettings?: RewardSettingData;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -82,11 +86,14 @@ export function RewardsClient({
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  const coinsPerTk = rewardSettings?.coinsPerTk ?? 10;
+  const cashValue = Math.floor(balance / (coinsPerTk || 10));
+
   async function handleRedeem(voucher: AvailableVoucher) {
     if (balance < voucher.coinCost) {
       toast({
         title: "Not enough coins",
-        description: `You need ${voucher.coinCost} coins but have ${balance}.`,
+        description: `You need ${voucher.coinCost - balance} more coins to redeem this voucher.`,
         variant: "destructive",
       });
       return;
@@ -120,21 +127,37 @@ export function RewardsClient({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">My Rewards</h1>
         <p className="text-sm text-muted-foreground">
-          Earn coins on delivered orders, redeem them for vouchers.
+          Earn Budget Coins on orders and spend them instantly at checkout or for vouchers.
         </p>
       </div>
 
-      {/* Balance Hero */}
-      <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30">
-        <CardContent className="p-6 flex items-center gap-4">
-          <div className="rounded-full bg-primary/20 p-4">
-            <Coins className="h-10 w-10 text-primary" />
+      {/* Balance Hero Card */}
+      <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-card to-amber-500/5 shadow-sm">
+        <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-amber-500/20 p-4 text-amber-600 dark:text-amber-400 shadow-inner">
+              <Coins className="h-10 w-10" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Your Coin Balance
+              </p>
+              <p className="text-4xl font-extrabold text-foreground tracking-tight font-mono">
+                {balance.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Earn 1 coin per ৳1 spent on delivered orders
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Your Coin Balance</p>
-            <p className="text-4xl font-bold">{balance.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Earn 1 coin per tk 1 spent on delivered orders (with qualifying rules)
+
+          <div className="rounded-xl border border-amber-500/20 bg-background/60 p-3.5 sm:text-right w-full sm:w-auto">
+            <p className="text-xs text-muted-foreground">Direct Checkout Value</p>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400">
+              ≈ {formatTk(cashValue)} Off
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Rate: {coinsPerTk} Coins = ৳1
             </p>
           </div>
         </CardContent>

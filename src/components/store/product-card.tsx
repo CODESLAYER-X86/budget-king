@@ -28,7 +28,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
   return (
     <Link
       href={`/product/${product.slug}`}
-      className="group block overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md"
+      className="group block overflow-hidden rounded-xl border bg-card transition-all duration-200 hover:shadow-md active:scale-[0.98] select-none touch-manipulation"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         {product.primaryImage ? (
@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             src={product.primaryImage}
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
@@ -44,58 +44,66 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           </div>
         )}
 
+        {/* Discount Badge */}
         {discount && (
-          <Badge className="absolute left-2 top-2 bg-destructive text-destructive-foreground">
+          <Badge className="absolute left-2 top-2 bg-rose-600 font-bold text-white shadow-sm">
             -{discount}%
           </Badge>
         )}
         {product.isFeatured && !discount && (
-          <Badge className="absolute left-2 top-2 bg-primary text-primary-foreground">
+          <Badge className="absolute left-2 top-2 bg-primary text-primary-foreground font-medium shadow-sm">
             Featured
           </Badge>
         )}
         {product.outOfStock && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-            <Badge variant="secondary">Out of Stock</Badge>
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-xs">
+            <Badge variant="secondary" className="font-semibold">Out of Stock</Badge>
           </div>
         )}
       </div>
 
-      <div className="p-3 space-y-1">
-        <h3 className="font-medium text-sm line-clamp-1 group-hover:text-primary">
+      <div className="p-3 space-y-1.5">
+        <h3 className="font-medium text-xs sm:text-sm line-clamp-1 group-hover:text-primary transition-colors">
           {product.name}
         </h3>
 
         {product.availableColors && product.availableColors.length > 0 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 py-0.5">
             {product.availableColors.slice(0, 5).map((c) => (
               <span
                 key={c}
-                className="inline-block h-3 w-3 rounded-full border"
+                className="inline-block h-2.5 w-2.5 rounded-full border shadow-2xs"
                 style={{ backgroundColor: colorToHex(c) }}
                 title={c}
               />
             ))}
             {product.availableColors.length > 5 && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[10px] text-muted-foreground">
                 +{product.availableColors.length - 5}
               </span>
             )}
           </div>
         )}
 
-        <div className="flex items-center gap-2 pt-1">
-          <span className="font-semibold text-sm">{formatTk(price)}</span>
-          {compare && compare > price && (
-            <span className="text-xs text-muted-foreground line-through">
-              {formatTk(compare)}
-            </span>
-          )}
+        <div className="flex items-baseline justify-between gap-1 pt-0.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-bold text-sm text-foreground">{formatTk(price)}</span>
+            {compare && compare > price && (
+              <span className="text-[11px] text-muted-foreground line-through">
+                {formatTk(compare)}
+              </span>
+            )}
+          </div>
+
+          {/* Coin reward pill */}
+          <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+            🪙 +{Math.floor(price)}
+          </span>
         </div>
 
         {product.rating != null && product.rating > 0 && (
-          <p className="text-xs text-muted-foreground">
-            ★ {product.rating.toFixed(1)}
+          <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <span className="text-amber-500">★</span> {product.rating.toFixed(1)}
             {product.reviewCount ? ` (${product.reviewCount})` : ""}
           </p>
         )}

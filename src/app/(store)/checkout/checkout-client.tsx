@@ -28,6 +28,7 @@ import { formatTk } from "@/lib/utils/currency";
 import { useToast } from "@/hooks/use-toast";
 import { placeOrderAction } from "@/actions/orders";
 import { validateDiscountCodeAction } from "@/actions/coupons";
+import type { RewardSettingData } from "@/actions/rewards";
 
 interface DeliveryZone {
   id: string;
@@ -54,11 +55,13 @@ export function CheckoutClient({
   addresses,
   user,
   coinBalance = 0,
+  rewardSettings,
 }: {
   deliveryZones: DeliveryZone[];
   addresses: SavedAddress[];
   user: { fullName: string; phone: string; email: string } | null;
   coinBalance?: number;
+  rewardSettings?: RewardSettingData;
 }) {
   const { lines, subtotal: calcSubtotal, clear } = useCart();
   const subtotal = calcSubtotal();
@@ -85,8 +88,13 @@ export function CheckoutClient({
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [validatingVoucher, setValidatingVoucher] = useState(false);
 
-  // Direct Coin Redemption State (10 Coins = ৳1)
+  // Direct Coin Redemption State (Dynamic: coinsPerTk from Admin settings)
   const [useCoins, setUseCoins] = useState(false);
+
+  const coinsPerTk = rewardSettings?.coinsPerTk ?? 10;
+  const maxPercent = (rewardSettings?.maxRedemptionPercent ?? 20) / 100;
+  const minCoins = rewardSettings?.minCoinsToRedeem ?? 10;
+  const isDirectActive = rewardSettings?.isDirectRedemptionActive ?? true;
 
   const selectedZone = useMemo(
     () => deliveryZones.find((z) => z.id === selectedZoneId),
@@ -96,14 +104,15 @@ export function CheckoutClient({
   const remainingAfterCoupon = Math.max(0, subtotal - voucherDiscount);
   const maxCoinsTk = Math.min(
     remainingAfterCoupon,
-    Math.max(50, Math.floor(remainingAfterCoupon * 0.20)),
-    Math.floor(coinBalance / 10)
+    Math.max(50, Math.floor(remainingAfterCoupon * maxPercent)),
+    Math.floor(coinBalance / (coinsPerTk || 10))
   );
   const coinDiscount = useCoins && maxCoinsTk > 0 ? maxCoinsTk : 0;
-  const coinsToRedeem = coinDiscount * 10;
+  const coinsToRedeem = coinDiscount * (coinsPerTk || 10);
 
   const deliveryCharge = selectedZone?.charge ?? 0;
   const total = Math.max(0, subtotal - voucherDiscount - coinDiscount + deliveryCharge);
+  const totalSavings = voucherDiscount + coinDiscount;
 
   async function handleApplyVoucher() {
     if (!voucherCode.trim()) return;
@@ -483,8 +492,8 @@ export function CheckoutClient({
                   )}
                 </div>
 
-                {/* Direct Coin Redemption (1-Tap Daraz/Shopee Style) */}
-                {user && coinBalance >= 10 && (
+                {/* Direct Coin Redemption (Dynamic Rate: e.g. 10 or 30 Coins = ৳1) */}
+                {user && isDirectActive && coinBalance >= minCoins && (
                   <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">
@@ -494,19 +503,19 @@ export function CheckoutClient({
                         <div>
                           <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                             Redeem Budget Coins
-                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 font-mono">
                               {coinBalance.toLocaleString()} Coins
                             </Badge>
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            10 Coins = ৳1 discount
+                            {coinsPerTk} Coins = ৳1 discount
                           </p>
                         </div>
                       </div>
                     </div>
 
                     {maxCoinsTk > 0 ? (
-                      <label className="flex items-center gap-2 cursor-pointer pt-1 border-t border-amber-500/15">
+                      <label className="flex items-center gap-2.5 cursor-pointer pt-1 border-t border-amber-500/15 select-none touch-manipulation">
                         <input
                           type="checkbox"
                           checked={useCoins}
@@ -514,7 +523,7 @@ export function CheckoutClient({
                           className="h-4 w-4 rounded border-amber-500 text-primary focus:ring-amber-500"
                         />
                         <span className="text-xs font-medium text-foreground">
-                          Use <span className="font-bold text-amber-600 dark:text-amber-400">{maxCoinsTk * 10} coins</span> to save <span className="font-bold text-green-600">{formatTk(maxCoinsTk)}</span>
+                          Use <span className="font-bold text-amber-600 dark:text-amber-400">{(maxCoinsTk * coinsPerTk).toLocaleString()} coins</span> to save <span className="font-bold text-green-600">{formatTk(maxCoinsTk)}</span>
                         </span>
                       </label>
                     ) : (
@@ -563,10 +572,11 @@ export function CheckoutClient({
                 </p>
               </div>
 
+              {/* Desktop Submit Button */}
               <Button
                 type="submit"
                 size="lg"
-                className="w-full"
+                className="w-full hidden md:flex min-h-[48px] text-base font-semibold active:scale-[0.98] transition-transform"
                 disabled={submitting}
               >
                 {submitting ? (
@@ -577,12 +587,45 @@ export function CheckoutClient({
                 Place COD Order
               </Button>
 
-              <p className="text-center text-xs text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground hidden md:block">
                 By placing this order, you agree to our terms.
                 Your card is not required — pay with cash on delivery.
               </p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Mobile Sticky Floating Order Bar (Fitts' Law / Thumb Zone Optimized) */}
+        <div className="fixed bottom-16 left-0 right-0 z-40 border-t border-border/80 bg-background/95 p-3 backdrop-blur-xl md:hidden shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xs text-muted-foreground">Total:</span>
+                <span className="text-lg font-bold text-foreground">{formatTk(total)}</span>
+              </div>
+              {totalSavings > 0 ? (
+                <p className="text-[10px] font-semibold text-green-600">
+                  🎉 Saving {formatTk(totalSavings)}
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">Cash on Delivery</p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              size="lg"
+              disabled={submitting}
+              className="h-12 px-6 text-sm font-bold shadow-lg shadow-primary/25 active:scale-95 transition-transform"
+            >
+              {submitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingBag className="mr-2 h-4 w-4" />
+              )}
+              Place Order
+            </Button>
+          </div>
         </div>
       </form>
     </div>

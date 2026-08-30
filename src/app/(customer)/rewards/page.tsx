@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { safeQuery } from "@/lib/safe-query";
 import { RewardsClient } from "./rewards-client";
+import { getRewardSettings } from "@/actions/rewards";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export default async function RewardsPage() {
   if (!session?.profile) redirect("/login?next=/rewards");
 
   // All queries protected — if DB fails (pool exhausted), show defaults instead of 500
-  const [balanceResult, transactions, vouchers, availableVouchers] = await Promise.all([
+  const [balanceResult, transactions, vouchers, availableVouchers, rewardSettings] = await Promise.all([
     safeQuery(
       () => db.coinTransaction.aggregate({
         where: { userId: session.id },
@@ -46,6 +47,7 @@ export default async function RewardsPage() {
       }),
       []
     ),
+    getRewardSettings(),
   ]);
 
   const balance = balanceResult._sum.amount ?? 0;
@@ -54,6 +56,7 @@ export default async function RewardsPage() {
     <div className="container mx-auto px-4 py-8">
       <RewardsClient
         balance={balance}
+        rewardSettings={rewardSettings}
         transactions={transactions.map((t) => ({
           id: t.id,
           type: t.type,

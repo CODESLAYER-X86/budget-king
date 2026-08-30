@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { CheckoutClient } from "./checkout-client";
 import { getSession } from "@/lib/auth/session";
-import { getCoinBalance } from "@/actions/rewards";
+import { getCoinBalance, getRewardSettings } from "@/actions/rewards";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +20,12 @@ export default async function CheckoutPage() {
     isDefault: boolean;
   }> = [];
 
+  const [rewardSettings, session] = await Promise.all([
+    getRewardSettings(),
+    getSession().catch(() => null),
+  ]);
+
   try {
-    const session = await getSession();
     if (session?.profile) {
       user = {
         fullName: session.profile.fullName ?? "",
@@ -97,6 +101,7 @@ export default async function CheckoutPage() {
       addresses={savedAddresses}
       user={user}
       coinBalance={coinBalance}
+      rewardSettings={rewardSettings}
     />
   );
 }

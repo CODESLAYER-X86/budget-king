@@ -4,11 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Coins, Ticket, History, Plus } from "lucide-react";
 import { formatTk } from "@/lib/utils/currency";
+import { getRewardSettings } from "@/actions/rewards";
+import { RewardSettingsCard } from "./reward-settings-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminRewardsPage() {
-  const [rules, vouchers, totalCoinsIssued, totalCoinsRedeemed, recentTransactions] = await Promise.all([
+  const [rules, vouchers, totalCoinsIssued, totalCoinsRedeemed, recentTransactions, rewardSettings] = await Promise.all([
     db.coinRule.findMany({ orderBy: { createdAt: "desc" } }),
     db.voucher.findMany({ orderBy: { createdAt: "desc" } }),
     db.coinTransaction.aggregate({
@@ -28,6 +30,7 @@ export default async function AdminRewardsPage() {
         voucher: { select: { code: true } },
       },
     }),
+    getRewardSettings(),
   ]);
 
   const issued = totalCoinsIssued._sum.amount ?? 0;
@@ -38,7 +41,7 @@ export default async function AdminRewardsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Rewards Management</h1>
         <p className="text-sm text-muted-foreground">
-          Configure coin earning rules and voucher templates.
+          Configure direct coin exchange rates, earning rules, and voucher templates.
         </p>
       </div>
 
@@ -88,6 +91,9 @@ export default async function AdminRewardsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Direct Coin Redemption Configuration */}
+      <RewardSettingsCard initialSettings={rewardSettings} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Coin Rules */}

@@ -404,3 +404,91 @@ export async function getMyVouchers() {
     orderBy: { redeemedAt: "desc" },
   });
 }
+
+// ============================================================
+// Dynamic Reward Settings (Coins per Tk, Max Discount Cap %, etc.)
+// ============================================================
+export type RewardSettingData = {
+  coinsPerTk: number;
+  coinsEarnedPerTk: number;
+  maxRedemptionPercent: number;
+  minCoinsToRedeem: number;
+  isDirectRedemptionActive: boolean;
+};
+
+const DEFAULT_REWARD_SETTINGS: RewardSettingData = {
+  coinsPerTk: 10,
+  coinsEarnedPerTk: 1,
+  maxRedemptionPercent: 20,
+  minCoinsToRedeem: 10,
+  isDirectRedemptionActive: true,
+};
+
+export async function getRewardSettings(): Promise<RewardSettingData> {
+  try {
+    if (!db.rewardSetting) return DEFAULT_REWARD_SETTINGS;
+    const setting = await db.rewardSetting.findUnique({
+      where: { id: "default" },
+    });
+    if (!setting) {
+      return DEFAULT_REWARD_SETTINGS;
+    }
+    return {
+      coinsPerTk: setting.coinsPerTk,
+      coinsEarnedPerTk: setting.coinsEarnedPerTk,
+      maxRedemptionPercent: setting.maxRedemptionPercent,
+      minCoinsToRedeem: setting.minCoinsToRedeem,
+      isDirectRedemptionActive: setting.isDirectRedemptionActive,
+    };
+  } catch {
+    return DEFAULT_REWARD_SETTINGS;
+  }
+}
+
+const UpdateRewardSettingsSchema = z.object({
+  coinsPerTk: z.number().int().positive("Coins per Tk must be at least 1"),
+  coinsEarnedPerTk: z.number().int().positive("Coins earned per Tk must be at least 1"),
+  maxRedemptionPercent: z.number().int().min(1).max(100, "Max percentage between 1% and 100%"),
+  minCoinsToRedeem: z.number().int().nonnegative(),
+  isDirectRedemptionActive: z.boolean(),
+});
+
+export async function updateRewardSettingsAction(input: unknown) {
+  const session = await getSession();
+  if (!session?.profile || session.profile.role !== "ADMIN") {
+    return { ok: false, error: "Unauthorized. Admin privileges required." };
+  }
+
+  const parsed = UpdateRewardSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message || "Invalid settings input" };
+  }
+
+  const data = parsed.data;
+
+  try {
+    const setting = await db.rewardSetting.upsert({
+      where: { id: "default" },
+      create: {
+        id: "default",
+        coinsPerTk: data.coinsPerTk,
+        coinsEarnedPerTk: data.coinsEarnedPerTk,
+        maxRedemptionPercent: data.maxRedemptionPercent,
+        minCoinsToRedeem: data.minCoinsToRedeem,
+        isDirectRedemptionActive: data.isDirectRedemptionActive,
+      },
+      update: {
+        coinsPerTk: data.coinsPerTk,
+        coinsEarnedPerTk: data.coinsEarnedPerTk,
+        maxRedemptionPercent: data.maxRedemptionPercent,
+        minCoinsToRedeem: data.minCoinsToRedeem,
+        isDirectRedemptionActive: data.isDirectRedemptionActive,
+      },
+    });
+
+    return { ok: true, setting };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
