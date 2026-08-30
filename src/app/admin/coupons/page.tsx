@@ -11,14 +11,21 @@ export default async function AdminCouponsPage() {
     redirect("/login");
   }
 
-  const coupons = await db.coupon.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: {
-        select: { usages: true },
-      },
-    },
-  });
+  let coupons: any[] = [];
+  try {
+    if (db.coupon) {
+      coupons = await db.coupon.findMany({
+        orderBy: { createdAt: "desc" },
+        include: {
+          _count: {
+            select: { usages: true },
+          },
+        },
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching coupons:", err);
+  }
 
   return (
     <CouponsClient
@@ -33,11 +40,11 @@ export default async function AdminCouponsPage() {
         totalUsageLimit: c.totalUsageLimit,
         perUserLimit: c.perUserLimit,
         usedCount: c.usedCount,
-        actualUsagesCount: c._count.usages,
-        startDate: c.startDate.toISOString(),
-        expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
+        actualUsagesCount: c._count?.usages ?? 0,
+        startDate: c.startDate ? new Date(c.startDate).toISOString() : new Date().toISOString(),
+        expiresAt: c.expiresAt ? new Date(c.expiresAt).toISOString() : null,
         isActive: c.isActive,
-        createdAt: c.createdAt.toISOString(),
+        createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
       }))}
     />
   );
