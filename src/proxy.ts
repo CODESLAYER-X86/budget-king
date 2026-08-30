@@ -4,42 +4,33 @@ import { createServerClient as createSSRClient } from "@supabase/ssr";
 /**
  * Refreshes the Supabase auth session on EVERY request.
  *
- * CRITICAL: This must run on ALL routes, not just protected ones.
- * Without session refresh, the Supabase auth cookie expires and
- * the user appears logged out when navigating between pages.
+ * CRITICAL: This must run on ALL routes to keep the auth session alive.
+ * Without it, the Supabase access token expires and the user appears
+ * logged out when navigating between pages (especially on mobile).
  *
- * Performance: This adds ~50ms (Supabase Auth getUser call) but
- * prevents the "auto logout" bug. The session refresh only runs
- * if there are auth cookies present — guests skip it.
+ * Performance: Skips Supabase call entirely if no auth cookies present.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
 
-  // Skip session refresh for static assets — no auth cookies there anyway
+  // Skip for static assets
   const path = request.nextUrl.pathname;
   if (
     path.startsWith("/_next/") ||
     path.startsWith("/api/") ||
-    path.includes(".png") ||
-    path.includes(".jpg") ||
-    path.includes(".svg") ||
-    path.includes(".ico") ||
-    path.includes(".css") ||
-    path.includes(".js") ||
-    path.includes(".webp") ||
-    path.includes("robots.txt") ||
-    path.includes("sitemap.xml") ||
-    path.includes("manifest.webmanifest")
+    path.match(/\.(png|jpg|jpeg|svg|ico|webp|css|js|woff|woff2|map)$/) ||
+    path === "/robots.txt" ||
+    path === "/sitemap.xml" ||
+    path === "/manifest.webmanifest"
   ) {
     return response;
   }
 
   // Check if there are any Supabase auth cookies
-  const hasAuthCookies = request.cookies
-    .getAll()
-    .some((c) => c.name.startsWith("sb-"));
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookies = allCookies.some((c) => c.name.startsWith("sb-"));
 
   if (!hasAuthCookies) {
     // Guest — no session to refresh
@@ -53,24 +44,29 @@ export async function proxy(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return allCookies;
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({
-            request: { headers: request.headers },
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Ensure cookies are set with proper options for mobile browsers
+            request.cookies.set(name, value);
+            response = NextResponse.next({
+              request: { headers: request.headers },
+            });
+            // Set cookie with same options as Supabase provides + ensure path and sameSite
+            response.cookies.set(name, value, {
+              ...options,
+              path: "/",
+              sameSite: "lax",
+              secure: process.env.NODE_ENV === "production",
+            });
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
         },
       },
     }
   );
 
-  // This refreshes the session and sets updated cookies
+  // This refreshes the session and sets updated cookies on the response
   await supabase.auth.getUser();
 
   return response;
