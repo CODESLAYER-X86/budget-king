@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { saveCategoryAction, deleteCategoryAction } from "@/actions/categories";
+import { saveCategoryAction, deleteCategoryAction, toggleCategoryStatusAction } from "@/actions/categories";
 import type { Category } from "@prisma/client";
 
 type CategoryRow = Category & {
@@ -53,15 +53,27 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
     });
   }
 
+  function handleToggleStatus(id: string) {
+    startTransition(async () => {
+      const result = await toggleCategoryStatusAction(id);
+      if (!result.ok) {
+        toast({ title: "Failed to update status", description: result.error, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Category status updated" });
+      router.refresh();
+    });
+  }
+
   function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete category "${name}"? Products in this category will be unassigned.`)) return;
+    if (!confirm(`Permanently delete category "${name}"? Products in this category will be safely reassigned.`)) return;
     startTransition(async () => {
       const result = await deleteCategoryAction(id);
       if (!result.ok) {
-        toast({ title: "Failed", description: result.error, variant: "destructive" });
+        toast({ title: "Failed to delete", description: result.error, variant: "destructive" });
         return;
       }
-      toast({ title: "Category deleted" });
+      toast({ title: "Category permanently deleted" });
       router.refresh();
     });
   }
@@ -80,7 +92,7 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
             categories.map((c) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between rounded-md border p-3"
+                className="flex items-center justify-between rounded-md border p-3 hover:bg-accent/30 transition-colors"
               >
                 <div>
                   <p className="font-medium text-sm flex items-center gap-2">
@@ -95,15 +107,27 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={c.isActive ? "default" : "secondary"}>
-                    {c.isActive ? "Active" : "Hidden"}
-                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStatus(c.id)}
+                    disabled={pending}
+                    className="focus:outline-hidden"
+                    title="Click to toggle Active / Hidden status"
+                  >
+                    <Badge
+                      variant={c.isActive ? "default" : "secondary"}
+                      className="cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      {c.isActive ? "Active" : "Hidden"}
+                    </Badge>
+                  </button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => handleDelete(c.id, c.name)}
                     disabled={pending}
+                    title="Permanently Delete Category"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
