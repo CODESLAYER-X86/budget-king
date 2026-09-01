@@ -10,6 +10,7 @@ import { OrderStatusActions } from "./order-status-actions";
 import { ChevronLeft, Phone, MapPin } from "lucide-react";
 
 import { AssignAgentSelector } from "./assign-agent-selector";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,8 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [order, staffAgents] = await Promise.all([
+  const [session, order, staffAgents] = await Promise.all([
+    getSession(),
     db.order.findUnique({
       where: { id },
       include: {
@@ -43,6 +45,8 @@ export default async function AdminOrderDetailPage({
   ]);
 
   if (!order) notFound();
+
+  const canAssign = session?.profile?.role === "ADMIN" || session?.profile?.role === "MODERATOR";
 
   // Resolve status changers
   const changedByIds = Array.from(
@@ -333,11 +337,25 @@ export default async function AdminOrderDetailPage({
               <CardTitle className="text-base">Assigned Agent</CardTitle>
             </CardHeader>
             <CardContent className="text-sm">
-              <AssignAgentSelector
-                orderId={order.id}
-                currentAgentId={order.agentId}
-                agents={staffAgents}
-              />
+              {canAssign ? (
+                <AssignAgentSelector
+                  orderId={order.id}
+                  currentAgentId={order.agentId}
+                  agents={staffAgents}
+                />
+              ) : order.agent ? (
+                <div className="space-y-1">
+                  <p className="font-medium">{order.agent.fullName ?? order.agent.email}</p>
+                  <p className="text-xs text-muted-foreground">{order.agent.email}</p>
+                  <Badge variant={order.agent.role === "ADMIN" ? "default" : "secondary"} className="text-[10px] mt-1">
+                    {order.agent.role}
+                  </Badge>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Unassigned
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

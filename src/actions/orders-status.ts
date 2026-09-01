@@ -260,6 +260,13 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
       } catch (e) {
         console.error("Coin award failed:", e);
       }
+
+      // Process referral bonus if the buyer was referred by a friend
+      try {
+        await processReferralBonusOnDelivery(order.userId, order.id, order.orderNumber);
+      } catch (e) {
+        console.error("Referral bonus processing failed:", e);
+      }
     }
 
     // Notify customer of status change

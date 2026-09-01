@@ -9,11 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getReferralBonusAmount } from "@/actions/referrals";
+import { ReferralConfigCard } from "./referral-config-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminReferralsPage() {
-  const [codes, events, totalCoinsAwarded] = await Promise.all([
+  const [codes, events, totalCoinsAwarded, bonusAmount] = await Promise.all([
     db.referralCode.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -26,6 +28,7 @@ export default async function AdminReferralsPage() {
       where: { type: "REFERRAL_BONUS" },
       _sum: { amount: true },
     }),
+    getReferralBonusAmount(),
   ]);
 
   return (
@@ -37,6 +40,9 @@ export default async function AdminReferralsPage() {
           {(totalCoinsAwarded._sum.amount ?? 0).toLocaleString()} coins awarded
         </p>
       </div>
+
+      {/* Admin Referral Bonus Setting Card */}
+      <ReferralConfigCard initialBonusAmount={bonusAmount} />
 
       <Card>
         <CardContent className="p-0">

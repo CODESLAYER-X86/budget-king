@@ -362,6 +362,11 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
           total: Number(result.order.total),
         })
       ).catch(() => {});
+
+      // 6. Link referral if user was referred via cookie
+      import("@/actions/referrals").then(({ linkUserToReferralFromCookie }) =>
+        linkUserToReferralFromCookie(userId!, data.customer.email || "")
+      ).catch(() => {});
     }
 
     return { ok: true, orderNumber: result.orderNumber };

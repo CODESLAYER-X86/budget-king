@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-import { getOrCreateMyReferralCode, getMyReferralEvents } from "@/actions/referrals";
+import { getOrCreateMyReferralCode, getMyReferralEvents, getReferralBonusAmount } from "@/actions/referrals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Copy, Share2, Gift, Users } from "lucide-react";
+import { Gift, Users } from "lucide-react";
 import { ReferralActions } from "./referral-actions";
+import { ClaimReferralCard } from "./claim-referral-card";
 
 export const dynamic = "force-dynamic";
 
@@ -13,22 +14,32 @@ export default async function ReferralsPage() {
   const session = await getSession();
   if (!session?.profile) redirect("/login?next=/referrals");
 
-  const [code, events] = await Promise.all([
+  const [code, events, bonusAmount, myReferrerEvent] = await Promise.all([
     getOrCreateMyReferralCode(),
     getMyReferralEvents(),
+    getReferralBonusAmount(),
+    db.referralEvent.findFirst({
+      where: { referredUserId: session.id },
+      include: { referrer: { include: { user: { select: { fullName: true, email: true } } } } },
+    }),
   ]);
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const referralLink = `${baseUrl}/?ref=${code.code}`;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="mb-6">
+    <div className="container mx-auto px-4 py-8 max-w-3xl space-y-6">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight">My Referrals</h1>
         <p className="text-sm text-muted-foreground">
-          Invite friends — earn 500 coins when they place their first order.
+          Invite friends — earn {bonusAmount} coins when their first order is delivered.
         </p>
       </div>
+
+      {/* Claim a referral code */}
+      <ClaimReferralCard
+        existingReferrerName={myReferrerEvent?.referrer?.user?.fullName ?? myReferrerEvent?.referrer?.user?.email}
+      />
 
       {/* Hero */}
       <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30">
@@ -41,7 +52,7 @@ export default async function ReferralsPage() {
               <p className="text-sm text-muted-foreground">Your Referral Code</p>
               <p className="text-3xl font-bold font-mono tracking-tight">{code.code}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {code.uses} people clicked your link • {code.successful} earned you bonus coins
+                {code.uses} clicks • {code.successful} successful referrals ({code.successful * bonusAmount} coins earned)
               </p>
             </div>
           </div>

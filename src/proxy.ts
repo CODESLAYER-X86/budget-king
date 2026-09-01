@@ -8,9 +8,21 @@ import { NextResponse, type NextRequest } from "next/server";
  * - Leaves cookies strictly intact to prevent mobile browsers from purging them.
  */
 export async function proxy(request: NextRequest) {
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: { headers: request.headers },
   });
+
+  const refParam = request.nextUrl.searchParams.get("ref");
+  if (refParam) {
+    response.cookies.set("bk_ref", refParam.toUpperCase().trim(), {
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      httpOnly: false,
+      sameSite: "lax",
+    });
+  }
+
+  return response;
 }
 
 export const config = {

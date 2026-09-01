@@ -3,6 +3,154 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { createNotification } from "@/lib/notifications";
+import { cookies } from "next/headers";
+
+// ============================================================
+// Get referral bonus amount (Admin configurable)
+// ============================================================
+export async function getReferralBonusAmount(): Promise<number> {
+  try {
+    const rule = await db.coinRule.findUnique({
+      where: { name: "REFERRAL_BONUS" },
+    });
+    return rule?.coinsAwarded ?? 500;
+  } catch {
+    return 500;
+  }
+}
+
+// ============================================================
+// Update referral bonus amount (Admin only)
+// ============================================================
+export async function updateReferralBonusAmountAction(amount: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session?.profile || session.profile.role !== "ADMIN") {
+    return { ok: false, error: "Unauthorized. Admin privileges required." };
+  }
+
+  if (amount < 0 || !Number.isInteger(amount)) {
+    return { ok: false, error: "Bonus amount must be a positive integer." };
+  }
+
+  try {
+    await db.coinRule.upsert({
+      where: { name: "REFERRAL_BONUS" },
+      create: {
+        name: "REFERRAL_BONUS",
+        minPurchase: 0,
+        coinsAwarded: amount,
+        isActive: true,
+      },
+      update: {
+        coinsAwarded: amount,
+        isActive: true,
+      },
+    });
+
+    await db.auditLog.create({
+      data: {
+        actorId: session.id,
+        actorRole: "ADMIN",
+        action: "referral.update_bonus",
+        target: "config:referral_bonus",
+        details: { coinsAwarded: amount } as any,
+      },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+// ============================================================
+// Apply / Claim a referral code manually by input field
+// ============================================================
+export async function applyReferralCodeAction(inputCode: string): Promise<{ ok: true; referrerName: string } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session?.profile) {
+    return { ok: false, error: "Please log in to apply a referral code." };
+  }
+
+  const cleanCode = inputCode.toUpperCase().trim();
+  if (!cleanCode) {
+    return { ok: false, error: "Please enter a valid referral code." };
+  }
+
+  const code = await db.referralCode.findUnique({
+    where: { code: cleanCode },
+    include: { user: { select: { fullName: true, email: true } } },
+  });
+
+  if (!code) {
+    return { ok: false, error: "Invalid referral code. Please check and try again." };
+  }
+
+  if (code.userId === session.id) {
+    return { ok: false, error: "You cannot use your own referral code." };
+  }
+
+  const alreadyReferred = await db.referralEvent.findFirst({
+    where: { referredUserId: session.id },
+  });
+
+  if (alreadyReferred) {
+    return { ok: false, error: "You have already claimed a referral code." };
+  }
+
+  await db.referralEvent.create({
+    data: {
+      referrerCodeId: code.id,
+      referredUserId: session.id,
+      referredEmail: session.email,
+      status: "PENDING",
+    },
+  });
+
+  await db.referralCode.update({
+    where: { id: code.id },
+    data: { uses: { increment: 1 } },
+  });
+
+  return { ok: true, referrerName: code.user.fullName ?? code.user.email };
+}
+
+// ============================================================
+// Helper: Link user from bk_ref cookie if present
+// ============================================================
+export async function linkUserToReferralFromCookie(userId: string, email: string) {
+  try {
+    const cookieStore = await cookies();
+    const refCode = cookieStore.get("bk_ref")?.value;
+    if (!refCode) return;
+
+    const code = await db.referralCode.findUnique({
+      where: { code: refCode.toUpperCase().trim() },
+    });
+    if (!code || code.userId === userId) return;
+
+    const existing = await db.referralEvent.findFirst({
+      where: { referredUserId: userId },
+    });
+    if (existing) return;
+
+    await db.referralEvent.create({
+      data: {
+        referrerCodeId: code.id,
+        referredUserId: userId,
+        referredEmail: email,
+        status: "PENDING",
+      },
+    });
+
+    await db.referralCode.update({
+      where: { id: code.id },
+      data: { uses: { increment: 1 } },
+    });
+  } catch (e) {
+    console.error("Failed to link user from ref cookie:", e);
+  }
+}
 
 // ============================================================
 // Get or create the current user's referral code
@@ -72,8 +220,6 @@ export async function getMyReferralEvents() {
 
 // ============================================================
 // Track a referral — called when someone visits with ?ref=CODE
-// Records a PENDING event. When that visitor signs up + places first
-// delivered order, the event is upgraded to REWARDED.
 // ============================================================
 export async function trackReferralVisitAction(
   refCode: string,
@@ -84,7 +230,6 @@ export async function trackReferralVisitAction(
   });
   if (!code) return { ok: false, error: "Invalid referral code" };
 
-  // Don't create duplicate events for the same email
   if (visitorEmail) {
     const existing = await db.referralEvent.findFirst({
       where: { referredEmail: visitorEmail, referrerCodeId: code.id },
@@ -122,10 +267,10 @@ export async function processReferralBonusOnDelivery(
   });
   if (!event) return;
 
-  // Award bonus coins to the referrer (e.g. 500 coins)
-  const BONUS = 500;
+  // Award dynamic bonus coins to the referrer (Admin configured)
+  const BONUS = await getReferralBonusAmount();
 
-  const result = await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     // Update the event
     await tx.referralEvent.update({
       where: { id: event.id },
@@ -163,8 +308,9 @@ export async function processReferralBonusOnDelivery(
     userId: event.referrer.userId,
     type: "COINS_EARNED",
     title: "Referral bonus earned!",
-    message: `You earned ${BONUS} coins! Your referral (${event.referredEmail}) just had their first order delivered.`,
+    message: `You earned ${BONUS} coins! Your referral (${event.referredEmail}) just had their order delivered.`,
     link: "/rewards",
     metadata: { amount: BONUS, referredEmail: event.referredEmail, orderNumber },
   }).catch(() => {});
 }
+
