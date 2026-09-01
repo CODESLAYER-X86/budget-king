@@ -84,9 +84,13 @@ export default async function HomePage() {
                 </span>
               </div>
             </div>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-gradient-to-br from-amber-100 to-orange-200 dark:from-amber-900/40 dark:to-orange-900/30">
+            <div className="relative aspect-square sm:aspect-[4/3] overflow-hidden rounded-3xl bg-gradient-to-br from-amber-100 via-orange-100 to-amber-200 dark:from-amber-950/50 dark:via-orange-950/30 dark:to-amber-900/40 p-6 sm:p-10 flex items-center justify-center shadow-lg border border-amber-200/50 dark:border-amber-900/30">
               <div className="flex h-full w-full items-center justify-center">
-                <img src="/logo.png" alt="Budget King BD" className="h-32 w-32 rounded-full" />
+                <img
+                  src="/logo.png"
+                  alt="Budget King BD"
+                  className="w-56 h-56 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-96 lg:h-96 rounded-full shadow-2xl object-contain border-4 border-white/80 dark:border-white/10 transition-transform duration-300 hover:scale-105"
+                />
               </div>
             </div>
           </div>
