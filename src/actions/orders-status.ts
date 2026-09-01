@@ -87,7 +87,20 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
         updateData.cancelReason = data.reason ?? "Cancelled by staff";
       }
 
-      await tx.order.update({ where: { id: order.id }, data: updateData });
+      // Auto-assign order to the acting agent/admin/moderator if not currently assigned
+      if (!order.agentId && session.profile && ["AGENT", "ADMIN", "MODERATOR"].includes(session.profile.role)) {
+        updateData.agentId = session.id;
+      }
+
+      // Atomic conditional update to prevent race conditions when multiple agents act simultaneously
+      const updateResult = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: updateData,
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error("This order was already updated or claimed by another staff member. Please refresh the page.");
+      }
 
       await tx.orderStatusHistory.create({
         data: {

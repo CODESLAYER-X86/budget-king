@@ -370,3 +370,61 @@ export async function placeOrderAction(input: unknown): Promise<CheckoutResult> 
     return { ok: false, error: error.message ?? "Failed to place order" };
   }
 }
+
+/**
+ * Assigns or reassigns an order to a staff agent.
+ * Only accessible by ADMIN and MODERATOR.
+ */
+export async function assignOrderAgentAction(input: {
+  orderId: string;
+  agentId: string | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getSession();
+  if (!session?.profile || !["ADMIN", "MODERATOR"].includes(session.profile.role)) {
+    return { ok: false, error: "Unauthorized: Only admins can assign orders" };
+  }
+
+  try {
+    const order = await db.order.findUnique({
+      where: { id: input.orderId },
+      select: { id: true, orderNumber: true, agentId: true },
+    });
+    if (!order) return { ok: false, error: "Order not found" };
+
+    let agentName = "Unassigned";
+    if (input.agentId) {
+      const agent = await db.profile.findUnique({
+        where: { id: input.agentId },
+        select: { id: true, fullName: true, email: true, role: true },
+      });
+      if (!agent || !["AGENT", "ADMIN", "MODERATOR"].includes(agent.role)) {
+        return { ok: false, error: "Invalid agent selected" };
+      }
+      agentName = agent.fullName || agent.email;
+    }
+
+    await db.order.update({
+      where: { id: input.orderId },
+      data: { agentId: input.agentId },
+    });
+
+    await db.auditLog.create({
+      data: {
+        actorId: session.id,
+        actorRole: session.profile.role,
+        action: "order.assign_agent",
+        target: `order:${order.orderNumber}`,
+        details: {
+          previousAgentId: order.agentId,
+          assignedAgentId: input.agentId,
+          assignedAgentName: agentName,
+        } as any,
+      },
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+

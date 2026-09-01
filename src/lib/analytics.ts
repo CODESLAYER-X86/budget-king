@@ -453,7 +453,7 @@ export async function getTopGroups(limit = 5) {
 export async function getAgentMetrics(range: DateRange) {
   // Group orders by assigned agent
   const agents = await db.profile.findMany({
-    where: { role: { in: ["AGENT", "ADMIN"] } },
+    where: { role: { in: ["AGENT", "ADMIN", "MODERATOR"] } },
     include: {
       assignedOrders: {
         where: { createdAt: { gte: range.from, lte: range.to } },

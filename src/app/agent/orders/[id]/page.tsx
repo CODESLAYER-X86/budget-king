@@ -7,6 +7,7 @@ import Link from "next/link";
 import { formatTk } from "@/lib/utils/currency";
 import { OrderStatusActions } from "@/components/management/order-status-actions-shared";
 import { ChevronLeft, Phone, MapPin, Clock } from "lucide-react";
+import { formatDateTime } from "@/lib/utils/date";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,25 @@ export default async function AgentOrderDetailPage({
       items: true,
       deliveryZone: true,
       statusHistory: { orderBy: { createdAt: "asc" } },
+      agent: { select: { fullName: true, email: true, role: true } },
     },
   });
 
   if (!order) notFound();
+
+  // Resolve status changers
+  const changedByIds = Array.from(
+    new Set(order.statusHistory.map((h) => h.changedBy).filter(Boolean))
+  ) as string[];
+
+  const changers = changedByIds.length > 0
+    ? await db.profile.findMany({
+        where: { id: { in: changedByIds } },
+        select: { id: true, fullName: true, email: true, role: true },
+      })
+    : [];
+
+  const changerMap = new Map(changers.map((c) => [c.id, c]));
 
   const address = order.deliveryAddressJson as {
     fullName?: string;
@@ -174,6 +190,53 @@ export default async function AgentOrderDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* Status history */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Status History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-3">
+                {order.statusHistory.map((h) => {
+                  const changer = h.changedBy ? changerMap.get(h.changedBy) : null;
+                  const isCustomer = h.changedBy && h.changedBy === order.userId;
+
+                  return (
+                    <li key={h.id} className="flex items-start gap-3 text-sm">
+                      <div className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{h.status.replace(/_/g, " ")}</span>
+                          {changer ? (
+                            <Badge variant={changer.role === "ADMIN" ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                              By {changer.fullName ?? changer.email} ({changer.role})
+                            </Badge>
+                          ) : isCustomer ? (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              By Customer
+                            </Badge>
+                          ) : h.changedBy ? (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              By Staff
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              System
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDateTime(h.createdAt)}
+                          {h.note ? ` • ${h.note}` : ""}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}
@@ -227,6 +290,20 @@ export default async function AgentOrderDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {order.agent && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Assigned Agent</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm">
+                <p className="font-medium">{order.agent.fullName ?? order.agent.email}</p>
+                <Badge variant="secondary" className="text-[10px] mt-1">
+                  {order.agent.role}
+                </Badge>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
