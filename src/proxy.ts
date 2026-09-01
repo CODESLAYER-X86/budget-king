@@ -8,6 +8,16 @@ import { NextResponse, type NextRequest } from "next/server";
  * - Leaves cookies strictly intact to prevent mobile browsers from purging them.
  */
 export async function proxy(request: NextRequest) {
+  // If Supabase redirects auth code to root '/' instead of '/auth/callback', forward it to callback handler
+  const codeParam = request.nextUrl.searchParams.get("code");
+  if (request.nextUrl.pathname === "/" && codeParam) {
+    const callbackUrl = new URL("/auth/callback", request.url);
+    request.nextUrl.searchParams.forEach((val, key) => {
+      callbackUrl.searchParams.set(key, val);
+    });
+    return NextResponse.redirect(callbackUrl);
+  }
+
   const response = NextResponse.next({
     request: { headers: request.headers },
   });
