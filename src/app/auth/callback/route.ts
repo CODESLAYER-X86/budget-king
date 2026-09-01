@@ -7,20 +7,39 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next") ?? "/account";
   const error = requestUrl.searchParams.get("error");
+  const errorDescription = requestUrl.searchParams.get("error_description");
+
+  // On Vercel / serverless proxies, request.url may be http internally.
+  // Resolve the true public HTTPS origin so iOS Safari doesn't discard Secure cookies.
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const origin = forwardedHost
+    ? `${forwardedProto ?? (process.env.NODE_ENV === "production" ? "https" : "http")}://${forwardedHost}`
+    : (process.env.NODE_ENV === "production"
+        ? requestUrl.origin.replace(/^http:/, "https:")
+        : requestUrl.origin);
 
   // If Google/Supabase redirected back with an error, redirect to login with the error
   if (error) {
-    const loginUrl = new URL("/login", requestUrl.origin);
+    const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set("next", next);
+    loginUrl.searchParams.set("error", error);
+    if (errorDescription) loginUrl.searchParams.set("error_description", errorDescription);
     return NextResponse.redirect(loginUrl);
   }
 
   if (!code) {
-    return NextResponse.redirect(`${requestUrl.origin}/login?error=no_code`);
+    const loginUrl = new URL("/login", origin);
+    loginUrl.searchParams.set("next", next);
+    loginUrl.searchParams.set("error", "no_code");
+    return NextResponse.redirect(loginUrl);
   }
 
+  const safeNext = next.startsWith("/") ? next : `/${next}`;
+  const successUrl = new URL(safeNext, origin);
+  const successResponse = NextResponse.redirect(successUrl);
+
   const cookieStore = await cookies();
-  const successResponse = NextResponse.redirect(`${requestUrl.origin}${next}`);
 
   const supabase = createSSRClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,14 +48,14 @@ export async function GET(request: NextRequest) {
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value, options }) => {
             successResponse.cookies.set(name, value, {
               ...options,
-              path: "/",
-              sameSite: "lax",
+              path: options?.path ?? "/",
+              sameSite: options?.sameSite ?? "lax",
               secure: process.env.NODE_ENV === "production",
-            })
-          );
+            });
+          });
         },
       },
     }
@@ -46,7 +65,7 @@ export async function GET(request: NextRequest) {
     const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
     if (exchangeError || !session?.user) {
       console.error("Auth exchange error:", exchangeError?.message);
-      const loginUrl = new URL("/login", requestUrl.origin);
+      const loginUrl = new URL("/login", origin);
       loginUrl.searchParams.set("next", next);
       loginUrl.searchParams.set("error", "auth_failed");
       return NextResponse.redirect(loginUrl);
@@ -85,8 +104,9 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {
     console.error("Auth callback exception:", (e as Error).message);
-    const loginUrl = new URL("/login", requestUrl.origin);
+    const loginUrl = new URL("/login", origin);
     loginUrl.searchParams.set("next", next);
+    loginUrl.searchParams.set("error", "auth_failed");
     return NextResponse.redirect(loginUrl);
   }
 

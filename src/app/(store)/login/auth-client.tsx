@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Crown, Loader2 } from "lucide-react";
@@ -12,24 +12,74 @@ export function AuthClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/account";
+  const errorParam = searchParams.get("error");
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  // Fix iOS Safari bfcache (Back-Forward Cache): If user navigated to Google and pressed Back,
+  // reset the loading state so button is not stuck spinning.
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        setLoading(false);
+      }
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  // Display error toast if redirected back to /login with an error code
+  useEffect(() => {
+    if (errorParam) {
+      const msg =
+        errorParam === "auth_failed"
+          ? "Authentication failed. Please try signing in again."
+          : errorParam === "no_code"
+          ? "No authorization code received from Google."
+          : errorParam === "access_denied"
+          ? "Google sign-in was cancelled."
+          : searchParams.get("error_description") ?? `Sign-in error: ${errorParam}`;
+      toast({
+        title: "Sign-in problem",
+        description: msg,
+        variant: "destructive",
+      });
+    }
+  }, [errorParam, searchParams, toast]);
+
   async function handleGoogle() {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (error) {
+    try {
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: "select_account",
+            access_type: "offline",
+          },
+        },
+      });
+
+      if (error) {
+        setLoading(false);
+        toast({
+          title: "Google sign-in failed",
+          description:
+            error.message ??
+            "Google OAuth may not be configured yet. Enable it in Supabase Dashboard → Authentication → Providers → Google.",
+          variant: "destructive",
+        });
+      } else if (data?.url) {
+        window.location.assign(data.url);
+      }
+    } catch (err) {
       setLoading(false);
       toast({
-        title: "Google sign-in failed",
-        description:
-          error.message ??
-          "Google OAuth may not be configured yet. Enable it in Supabase Dashboard → Authentication → Providers → Google.",
+        title: "Google sign-in error",
+        description: (err as Error).message ?? "An unexpected error occurred.",
         variant: "destructive",
       });
     }

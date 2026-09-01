@@ -34,6 +34,7 @@ type VariantRow = {
   color: string;
   size: string;
   stock: string;
+  reserved?: number;
 };
 
 export function ProductForm({
@@ -87,6 +88,7 @@ export function ProductForm({
         color: opts.color ?? "",
         size: opts.size ?? "",
         stock: String(v.inventory?.quantity ?? 0),
+        reserved: v.inventory?.reserved ?? 0,
       };
     }) ?? [
       {
@@ -96,6 +98,7 @@ export function ProductForm({
         color: "",
         size: "",
         stock: "0",
+        reserved: 0,
       },
     ]
   );
@@ -407,7 +410,17 @@ export function ProductForm({
                 />
               </div>
               <div>
-                <Label className="text-xs">Stock</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Stock</Label>
+                  {(v.reserved ?? 0) > 0 && (
+                    <span
+                      className="text-[10px] text-amber-600 font-semibold"
+                      title={`${v.reserved} reserved by orders, ${Math.max(0, parseInt(v.stock || "0", 10) - (v.reserved ?? 0))} available`}
+                    >
+                      ({v.reserved} res / {Math.max(0, parseInt(v.stock || "0", 10) - (v.reserved ?? 0))} avail)
+                    </span>
+                  )}
+                </div>
                 <Input
                   type="number"
                   value={v.stock}

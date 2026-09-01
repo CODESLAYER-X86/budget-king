@@ -91,24 +91,17 @@ export function StoreNavbar() {
           <SheetContent side="left" className="w-[300px] p-0 flex flex-col justify-between">
             <div className="overflow-y-auto p-5 space-y-5">
               <SheetHeader className="text-left border-b pb-4">
-                <SheetTitle className="flex items-center gap-2 text-lg font-bold">
-                  <div className="rounded-lg bg-primary/10 p-1.5 text-primary">
-                    <Crown className="h-5 w-5" />
-                  </div>
-                  <span>Budget King BD</span>
+                <SheetTitle className="flex items-center gap-2.5 text-lg font-bold">
+                  <img
+                    src="/logo.png"
+                    alt="Budget King BD"
+                    className="h-8 w-8 rounded-full object-cover shrink-0 ring-1 ring-border/50"
+                  />
+                  <span>
+                    Budget King <span className="text-primary">BD</span>
+                  </span>
                 </SheetTitle>
               </SheetHeader>
-
-              {/* Search Bar */}
-              <form onSubmit={onSearch} className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search products..."
-                  className="pl-9 h-10 rounded-xl bg-secondary/40 border-border/80 focus:bg-background transition-colors"
-                />
-              </form>
 
               {/* User Greeting Card if logged in */}
               {authUser ? (

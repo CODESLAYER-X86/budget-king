@@ -98,8 +98,8 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
         },
       });
 
-      // If cancelled → release reserved stock + restore voucher
-      if (data.newStatus === "CANCELLED") {
+      // If cancelled or delivery failed → release reserved stock + restore voucher/coupons/coins
+      if (data.newStatus === "CANCELLED" || data.newStatus === "DELIVERY_FAILED") {
         for (const item of order.items) {
           const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
           if (!inv) continue;
@@ -113,7 +113,7 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
               type: "RELEASED",
               quantity: item.quantity,
               refOrderId: order.id,
-              note: `Released: order ${order.orderNumber} cancelled`,
+              note: `Released: order ${order.orderNumber} ${data.newStatus.toLowerCase().replace("_", " ")}`,
             },
           });
         }
@@ -154,9 +154,49 @@ export async function updateOrderStatusAction(input: unknown): Promise<Result> {
               amount: order.coinsRedeemed,
               balanceAfter: currentBal + order.coinsRedeemed,
               orderId: order.id,
-              note: `Refunded direct checkout coins from cancelled order ${order.orderNumber}`,
+              note: `Refunded direct checkout coins from ${data.newStatus.toLowerCase().replace("_", " ")} order ${order.orderNumber}`,
             },
           });
+        }
+      }
+
+      // If returned → handle stock based on whether it was delivered or shipped before return
+      if (data.newStatus === "RETURNED") {
+        for (const item of order.items) {
+          const inv = await tx.inventory.findUnique({ where: { variantId: item.variantId } });
+          if (!inv) continue;
+
+          if (order.status === "SHIPPED") {
+            // Returned before delivery was completed: release reserved lock
+            await tx.inventory.update({
+              where: { id: inv.id },
+              data: { reserved: { decrement: item.quantity } },
+            });
+            await tx.inventoryMovement.create({
+              data: {
+                inventoryId: inv.id,
+                type: "RELEASED",
+                quantity: item.quantity,
+                refOrderId: order.id,
+                note: `Released: order ${order.orderNumber} returned before delivery`,
+              },
+            });
+          } else {
+            // Returned after delivery (DELIVERED or RETURN_REQUESTED): restock physical quantity
+            await tx.inventory.update({
+              where: { id: inv.id },
+              data: { quantity: { increment: item.quantity } },
+            });
+            await tx.inventoryMovement.create({
+              data: {
+                inventoryId: inv.id,
+                type: "RETURNED",
+                quantity: item.quantity,
+                refOrderId: order.id,
+                note: `Restocked from returned order ${order.orderNumber}`,
+              },
+            });
+          }
         }
       }
 
