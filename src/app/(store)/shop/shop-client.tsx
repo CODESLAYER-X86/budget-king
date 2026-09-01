@@ -221,8 +221,8 @@ export function ShopClient({
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {filtered.map((p) => (
-                <ProductCard key={p.id} product={p} />
+              {filtered.map((p, index) => (
+                <ProductCard key={p.id} product={p} priority={index < 4} />
               ))}
             </div>
           )}

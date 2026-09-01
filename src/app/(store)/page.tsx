@@ -164,9 +164,10 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
-            {featured.map((p) => (
+            {featured.map((p, index) => (
               <ProductCard
                 key={p.id}
+                priority={index < 4}
                 product={{
                   id: p.id,
                   slug: p.slug,

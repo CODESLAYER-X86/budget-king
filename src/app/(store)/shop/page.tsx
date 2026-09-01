@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { ShopClient } from "./shop-client";
 import { safeQuery } from "@/lib/safe-query";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ShopPage() {
   // Fetch ALL active products in ONE query

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatTk } from "@/lib/utils/currency";
@@ -17,7 +18,13 @@ type ProductCardData = {
   outOfStock?: boolean;
 };
 
-export function ProductCard({ product }: { product: ProductCardData }) {
+export function ProductCard({
+  product,
+  priority = false,
+}: {
+  product: ProductCardData;
+  priority?: boolean;
+}) {
   const price = Number(product.basePrice);
   const compare = product.compareAtPrice ? Number(product.compareAtPrice) : null;
   const discount =
@@ -32,11 +39,14 @@ export function ProductCard({ product }: { product: ProductCardData }) {
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         {product.primaryImage ? (
-          <img
+          <Image
             src={product.primaryImage}
             alt={product.name}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            priority={priority}
+            loading={priority ? undefined : "lazy"}
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">

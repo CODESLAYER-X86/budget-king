@@ -82,9 +82,10 @@ export default async function CategoryPage({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.map((p) => (
+            {products.map((p, index) => (
               <ProductCard
                 key={p.id}
+                priority={index < 4}
                 product={{
                   id: p.id,
                   slug: p.slug,
