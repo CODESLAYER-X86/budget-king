@@ -43,7 +43,7 @@ export function ProductCard({
             src={product.primaryImage}
             alt={product.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
             priority={priority}
             loading={priority ? undefined : "lazy"}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
