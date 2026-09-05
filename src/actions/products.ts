@@ -308,21 +308,26 @@ export async function deleteProductAction(productId: string): Promise<SaveResult
   });
   if (!product) return { ok: false, error: "Product not found" };
 
-  // Don't hard delete — just archive (preserves order history)
-  await db.product.update({
-    where: { id: productId },
-    data: { status: "ARCHIVED" },
-  });
+  try {
+    // Don't hard delete — just archive (preserves order history)
+    await db.product.update({
+      where: { id: productId },
+      data: { status: "ARCHIVED" },
+    });
 
-  await db.auditLog.create({
-    data: {
-      actorId: session.id,
-      actorRole: session.profile!.role,
-      action: "product.archive",
-      target: `product:${productId}`,
-      details: { name: product.name } as any,
-    },
-  });
+    await db.auditLog.create({
+      data: {
+        actorId: session.id,
+        actorRole: session.profile!.role,
+        action: "product.archive",
+        target: `product:${productId}`,
+        details: { name: product.name } as any,
+      },
+    });
 
-  return { ok: true, productId };
+    return { ok: true, productId };
+  } catch (e) {
+    console.error("deleteProductAction error:", e);
+    return { ok: false, error: (e as Error).message ?? "Failed to archive product" };
+  }
 }

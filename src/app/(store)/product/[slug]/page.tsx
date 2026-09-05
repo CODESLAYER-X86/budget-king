@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ProductDetailClient } from "./product-detail-client";
@@ -12,6 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Truck, RefreshCw, ShieldCheck, ChevronRight } from "lucide-react";
 
 export const revalidate = 300;
+
+/**
+ * Normalize a slug: decode URI, collapse whitespace/special chars to hyphens,
+ * lowercase, and strip leading/trailing hyphens.
+ * Returns the canonical slug form.
+ */
+function normalizeSlug(raw: string): string {
+  return decodeURIComponent(raw)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 // Cache product data in module scope so generateMetadata and the page
 // share ONE database query instead of making two separate calls
@@ -57,7 +69,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = normalizeSlug(rawSlug);
+  if (slug !== rawSlug) {
+    return { title: "Redirecting…" };
+  }
   const product = await getProduct(slug);
   if (!product) return { title: "Product not found — Budget King BD" };
 
@@ -87,7 +103,11 @@ export default async function ProductPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = normalizeSlug(rawSlug);
+  if (slug !== rawSlug) {
+    redirect(`/product/${slug}`);
+  }
   const product = await getProduct(slug);
 
   if (!product) {

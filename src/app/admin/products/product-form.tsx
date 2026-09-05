@@ -192,14 +192,23 @@ export function ProductForm({
     if (!product) return;
     if (!confirm(`Delete "${product.name}"? This will archive the product.`)) return;
     startTransition(async () => {
-      const result = await deleteProductAction(product.id);
-      if (!result.ok) {
-        toast({ title: "Delete failed", description: result.error, variant: "destructive" });
-        return;
+      try {
+        const result = await deleteProductAction(product.id);
+        if (!result.ok) {
+          toast({ title: "Delete failed", description: result.error, variant: "destructive" });
+          return;
+        }
+        toast({ title: "Product archived" });
+        router.push("/admin/products");
+        router.refresh();
+      } catch (err) {
+        console.error("Product delete error:", err);
+        toast({
+          title: "Delete failed",
+          description: (err as Error).message || "An unexpected error occurred",
+          variant: "destructive",
+        });
       }
-      toast({ title: "Product archived" });
-      router.push("/admin/products");
-      router.refresh();
     });
   }
 
