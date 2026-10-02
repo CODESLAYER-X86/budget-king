@@ -176,7 +176,9 @@ export async function getOrCreateMyReferralCode(): Promise<{
       .substring(0, 4)
       .toUpperCase()
       .padEnd(4, "X");
-    const random = Math.floor(Math.random() * 900 + 100);
+    const randomValues = new Uint32Array(1);
+    crypto.getRandomValues(randomValues);
+    const random = (randomValues[0] % 900) + 100;
     const code = `${namePart}-BK${random}`;
 
     existing = await db.referralCode.create({
