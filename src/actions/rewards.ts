@@ -356,8 +356,10 @@ export async function validateVoucherAction(
 function generateVoucherCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I, O, 0, 1 (ambiguous)
   let code = "";
+  const randomValues = new Uint32Array(5);
+  crypto.getRandomValues(randomValues);
   for (let i = 0; i < 5; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomValues[i] % chars.length];
   }
   return code;
 }
