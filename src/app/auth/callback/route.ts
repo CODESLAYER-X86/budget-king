@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const safeNext = next.startsWith("/") ? next : `/${next}`;
+  let safeNext = next.startsWith("/") ? next : `/${next}`;
+  // Prevent open redirect by ensuring it starts with exactly one slash
+  safeNext = safeNext.replace(/^\/+/, "/");
+
   const successUrl = new URL(safeNext, origin);
   const successResponse = NextResponse.redirect(successUrl);
 
