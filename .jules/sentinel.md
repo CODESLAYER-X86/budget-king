@@ -1,0 +1,4 @@
+## 2023-10-24 - Information Disclosure via Leftover Debug Endpoint
+**Vulnerability:** A diagnostic endpoint (`/api/debug-auth`) intended only for local development/debugging was left in the codebase. It leaked internal database profile structure, environment variables, authentication details, and raw cookie previews to any anonymous user visiting the endpoint.
+**Learning:** Temporary debug endpoints created during auth or system integrations can be easily forgotten and pushed to production. They present severe Information Disclosure risks (CWE-200) and aid attackers in fingerprinting the system.
+**Prevention:** Avoid creating ad-hoc debug routes entirely if possible; instead, rely on secure, internal logging or proper APM tooling. If temporary debug endpoints must be created, ensure they are tightly gated by environment variable checks (e.g., `if (process.env.NODE_ENV !== "development") return 404;`) or strict admin-only authorization from the start.
