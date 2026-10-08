@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
 import { createNotification } from "@/lib/notifications";
 import { cookies } from "next/headers";
+import { randomInt } from "crypto";
 
 // ============================================================
 // Get referral bonus amount (Admin configurable)
@@ -176,7 +177,7 @@ export async function getOrCreateMyReferralCode(): Promise<{
       .substring(0, 4)
       .toUpperCase()
       .padEnd(4, "X");
-    const random = Math.floor(Math.random() * 900 + 100);
+    const random = randomInt(100, 1000);
     const code = `${namePart}-BK${random}`;
 
     existing = await db.referralCode.create({
