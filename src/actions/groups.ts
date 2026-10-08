@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth/session";
 import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import { headers } from "next/headers";
 import { notifyGroupEvent } from "@/lib/notifications";
+import { randomInt } from "crypto";
 
 // ============================================================
 // Create a new group — caller becomes the OWNER
@@ -852,7 +853,7 @@ function generateCode(length: number): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars
   let code = "";
   for (let i = 0; i < length; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }

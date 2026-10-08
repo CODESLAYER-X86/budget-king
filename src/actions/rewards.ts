@@ -7,6 +7,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 import type { CoinTransactionType } from "@prisma/client";
 import { headers } from "next/headers";
 import { notifyVoucherRedeemed } from "@/lib/notifications";
+import { randomInt } from "crypto";
 
 // ============================================================
 // Coin balance helper — sum of all transactions for a user
@@ -357,7 +358,7 @@ function generateVoucherCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I, O, 0, 1 (ambiguous)
   let code = "";
   for (let i = 0; i < 5; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }
